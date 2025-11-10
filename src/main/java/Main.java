@@ -30,6 +30,8 @@ public class Main { // ground control
         UpdateMission updateMission = new UpdateMission(1, 2, 50, m.convertMessageDataToBytes());
         Message updateMessage = new Message(1, Message.MessageDataTypes.MISSION_UPDATE, updateMission);
         Message upmsg = Message.convertBytesToMessage(updateMessage.convertMessageToBytes());
+
+        System.out.println(upmsg.toString());
         /*
         RequestMission reqM = new RequestMission(1);
         Message message = new Message(1,Message.MessageDataTypes.REQUEST_MISSION, reqM);

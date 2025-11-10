@@ -70,4 +70,13 @@ public class Message  {
         }
         return new Message (sequenceNumber, dataType, mData);
     }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "sequenceNumber=" + sequenceNumber +
+                ", messageDataType=" + messageDataType +
+                ", data=" + data.toString() +
+                '}';
+    }
 }
