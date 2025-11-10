@@ -2,6 +2,7 @@ package Message;
 
 public interface MessageData {
     byte[] convertMessageDataToBytes();
+    String toString();
     /*
     convertMessageDataToBytes[0] should always be the length of the array
 

@@ -1,5 +1,7 @@
 package Connection;
 
+import Message.Message;
+
 import java.net.*;
 import java.util.Arrays;
 
@@ -21,10 +23,11 @@ public class MissionLinkServer implements Runnable { //UDP
                 socket.receive(packet);
 
                 byte[] msg = packet.getData();
-                System.out.println("[ML] Received: " + Arrays.toString(msg)); //kinda wacky here but it's gonna change anyway so idrc rn
+                Message message = Message.convertBytesToMessage(msg);
+                System.out.println("[ML] Received: " + message.toString()); //kinda wacky here but it's gonna change anyway so idrc rn
 
                 // for response
-                String ack = "ACK: " + Arrays.toString(msg);
+                String ack = "ACK: " + message.toString();
                 byte[] ackBytes = ack.getBytes();
                 DatagramPacket response = new DatagramPacket(
                         ackBytes, ackBytes.length, packet.getAddress(), packet.getPort());

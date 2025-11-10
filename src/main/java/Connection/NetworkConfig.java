@@ -6,7 +6,7 @@ public class NetworkConfig {
     public static final Map<ID, String> ID_TO_IP_MAP = Map.of(
             ID.MOTHERSHIP_IP, "10.0.1.10",
             ID.TELEMETRY_STREAM_PORT, "5000",
-            ID.MISSION_LINK_PORT, "600",
+            ID.MISSION_LINK_PORT, "6000",
             ID.GROUND_CONTROL, "10.0.11.11",
             ID.ROVER_1, "10.0.0.10",
             ID.ROVER_2, "10.0.2.10",

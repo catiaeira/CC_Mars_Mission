@@ -18,4 +18,11 @@ public class RequestMission implements MessageData {
     public static RequestMission convertBytesToMessageData(byte[] bytes) {
         return new RequestMission(bytes[1]);
     }
+
+    @Override
+    public String toString() {
+        return "RequestMission{" +
+                "idRover=" + idRover +
+                '}';
+    }
 }
