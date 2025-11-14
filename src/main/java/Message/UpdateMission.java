@@ -2,6 +2,7 @@ package Message;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class UpdateMission implements MessageData {
     private final int idMission;
@@ -9,6 +10,12 @@ public class UpdateMission implements MessageData {
     private final int completionLevel;
     private final byte[] extraData;
 
+    public UpdateMission (int idMission, int idRover, int completionLevel) {
+        this.idMission = idMission;
+        this.idRover = idRover;
+        this.completionLevel = completionLevel;
+        this.extraData = new byte[0];
+    }
     public UpdateMission (int idMission, int idRover, int completionLevel, byte[] extraData) {
         this.idMission = idMission;
         this.idRover = idRover;
@@ -54,5 +61,15 @@ public class UpdateMission implements MessageData {
         }
 
         return new UpdateMission(idMission, idRover, completionLevel, extraData);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateMission{" +
+                "idMission=" + idMission +
+                ", idRover=" + idRover +
+                ", completionLevel=" + completionLevel +
+                ", extraData=" + Arrays.toString(extraData) +
+                '}';
     }
 }

@@ -62,4 +62,17 @@ public class MissionMessage implements MessageData{
 
         return new MissionMessage(missionId, roverId, missionType, coordinates, areaRadius, missionTime, updateTime);
     }
+
+    @Override
+    public String toString() {
+        return "MissionMessage{" +
+                "missionId=" + missionId +
+                ", roverId=" + roverId +
+                ", missionType=" + missionType +
+                ", areaCoordinates=" + areaCoordinates +
+                ", areaRadius=" + areaRadius +
+                ", missionTime=" + missionTime +
+                ", updateTime=" + updateTime +
+                '}';
+    }
 }

@@ -124,4 +124,16 @@ public class RoverTelemetryMessage implements MessageData{
                 id, new Point3D(x,y,z), Rover.MissionState.values()[stateOrdinal],
                 batteryLevel, inventory, physicalStates);
     }
+
+    @Override
+    public String toString() {
+        return "RoverTelemetryMessage{" +
+                "id=" + id +
+                ", position=" + position +
+                ", state=" + state +
+                ", batteryLevel=" + batteryLevel +
+                ", inventory=" + inventory +
+                ", physicalStates=" + physicalStates +
+                '}';
+    }
 }
