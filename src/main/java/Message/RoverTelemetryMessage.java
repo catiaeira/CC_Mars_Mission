@@ -21,6 +21,7 @@ public class RoverTelemetryMessage implements MessageData{
     public RoverTelemetryMessage (Rover rover){
         this.id = rover.getId();
         this.position = rover.getPosition();
+        this.state = rover.getState();
         this.physicalStates = rover.getPhysicalStates();
         this.physicalStates = rover.getPhysicalStates();
         this.batteryLevel = rover.getBatteryLevel();
@@ -127,13 +128,13 @@ public class RoverTelemetryMessage implements MessageData{
 
     @Override
     public String toString() {
-        return "RoverTelemetryMessage{" +
-                "id=" + id +
-                ", position=" + position +
-                ", state=" + state +
-                ", batteryLevel=" + batteryLevel +
-                ", inventory=" + inventory +
-                ", physicalStates=" + physicalStates +
+        return "RoverTelemetryMessage { " +
+                "id = " + id +
+                ", position = " + position +
+                ", state = " + state +
+                ", batteryLevel = " + batteryLevel +
+                ", inventory = " + inventory +
+                ", physicalStates = " + physicalStates +
                 '}';
     }
 }

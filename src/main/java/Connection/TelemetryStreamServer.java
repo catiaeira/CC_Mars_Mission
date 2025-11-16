@@ -1,5 +1,7 @@
 package Connection;
 
+import Message.Message;
+
 import java.io.*;
 import java.net.*;
 
@@ -25,10 +27,17 @@ public class TelemetryStreamServer implements Runnable {
     }
 
     private void handleRover(Socket socket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-            String line;
-            while ((line = in.readLine()) != null) {
-                System.out.println("[TS] Telemetry: " + line); // not printing
+        try(DataInputStream in = new DataInputStream(socket.getInputStream())) {
+            while (true) {
+                int length = in.readInt();
+                if (length > 0) {
+                    byte[] messageBytes = new byte[length];
+
+                    in.readFully(messageBytes);
+
+                    Message receivedMsg = Message.convertBytesToMessage(messageBytes);
+                    System.out.println("[TS] Received telemetry message: " + receivedMsg.toString());
+                }
             }
         } catch (IOException e) {
             System.out.println("[TS] Rover disconnected.");

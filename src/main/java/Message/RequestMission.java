@@ -21,8 +21,8 @@ public class RequestMission implements MessageData {
 
     @Override
     public String toString() {
-        return "RequestMission{" +
-                "idRover=" + idRover +
+        return "RequestMission { " +
+                "idRover = " + idRover +
                 '}';
     }
 }
