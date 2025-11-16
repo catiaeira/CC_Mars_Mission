@@ -21,6 +21,7 @@ public class RoverConnection {
         missionLinkClient.enqueueMessage(msg);
         System.out.println("[Rover " + this.rover.getId() + "] sent a mission request.");
     }
+
     public void sendTelemetry() {
         Thread t = new Thread (() -> {
             boolean running = true;
@@ -32,7 +33,6 @@ public class RoverConnection {
                     Thread.sleep(120000); // every 2 minutes
                 } catch (InterruptedException e) {
                     System.out.println("[Rover " + this.rover.getId() + "] Connection thread interrupted.");
-                    Thread.currentThread().interrupt();
                     running = false;
                 }
                 catch (TelemetryStreamClient.TelemetryStreamNotRunning e) {

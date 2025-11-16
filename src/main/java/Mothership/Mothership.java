@@ -1,26 +1,31 @@
 package Mothership;
 
-import Connection.MissionLinkServer;
-import Connection.TelemetryStreamServer;
-import Connection.NetworkConfig;
+import Message.Message;
+
+import java.util.HashMap;
+import Message.RoverTelemetryMessage;
 
 public class Mothership { // controller
-    public static void main(String[] args) {
-        NetworkConfig networkConfig = new NetworkConfig();
-        String ml_port = networkConfig.getIp(NetworkConfig.ID.MISSION_LINK_PORT);
-        String ts_port = networkConfig.getIp(NetworkConfig.ID.TELEMETRY_STREAM_PORT);
-        try {
-            Thread udpServer = new Thread(new MissionLinkServer(Integer.parseInt(ml_port)));
-            Thread tcpServer = new Thread(new TelemetryStreamServer(Integer.parseInt(ts_port)));
+    HashMap<Integer, RoverInfo> rovers = new HashMap<>();
 
-            udpServer.start();
-            tcpServer.start();
-
-            System.out.println("Mothership is running MissionLink (UDP) on port " + ml_port + " and TelemetryStream (TCP) on port " + ts_port + ".");
-        } catch (Exception e) {
-            System.out.println("Failed to establish connections: " + e.getMessage());
-            e.printStackTrace();
+    public void updateRoverInfoWithTelemetry (Message msg) {
+        if (msg.getMessageDataType()!= Message.MessageDataTypes.ROVER_TELEMETRY) {
+            System.out.println("Message that isn't telemetry received in TS");
+            return; // should never happen
         }
+        RoverTelemetryMessage telemetry = (RoverTelemetryMessage) msg.getMessageData();
+        RoverInfo roverInfo = this.rovers.get(telemetry.id);
+        if (roverInfo == null) {
+            System.out.println("[TS] No RoverInfo found with id " + telemetry.id);
+            return;  // shouldn't happen?
+        }
+        roverInfo.updateLastTelemetryMessage(telemetry);
+        roverInfo.updateLastActiveTimestamp(System.currentTimeMillis());
+    }
+
+    public static void main(String[] args) {
+        Mothership mothership = new Mothership();
+        MothershipConnection connection = new MothershipConnection(mothership);
+        connection.startServer();
     }
 }
-

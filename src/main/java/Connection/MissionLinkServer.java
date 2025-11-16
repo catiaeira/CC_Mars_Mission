@@ -1,6 +1,7 @@
 package Connection;
 
 import Message.Message;
+import Mothership.Mothership;
 
 import java.io.IOException;
 import java.net.*;
@@ -10,9 +11,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class MissionLinkServer implements Runnable { //UDP
     private int port;
+    private Mothership mothership;
 
-    public MissionLinkServer(int port) {
+    public MissionLinkServer(int port, Mothership mothership) {
         this.port = port;
+        this.mothership = mothership;
     }
 
     @Override

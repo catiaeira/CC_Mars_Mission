@@ -11,12 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RoverTelemetryMessage implements MessageData{
-    private int id;
-    private Point3D position;
-    private Rover.MissionState state;
-    private int batteryLevel;
-    private List<String> inventory;
-    private List <PhysicalState> physicalStates;
+    public int id;
+    public Point3D position;
+    public Rover.MissionState state;
+    public int batteryLevel;
+    public List<String> inventory;
+    public List <PhysicalState> physicalStates;
 
     public RoverTelemetryMessage (Rover rover){
         this.id = rover.getId();

@@ -4,12 +4,15 @@ import Message.Message;
 
 import java.io.*;
 import java.net.*;
+import Mothership.Mothership;
 
 public class TelemetryStreamServer implements Runnable {
     private int port;
+    private Mothership mothership;
 
-    public TelemetryStreamServer(int port) {
+    public TelemetryStreamServer(int port, Mothership mothership) {
         this.port = port;
+        this.mothership = mothership;
     }
 
     @Override
@@ -37,6 +40,7 @@ public class TelemetryStreamServer implements Runnable {
 
                     Message receivedMsg = Message.convertBytesToMessage(messageBytes);
                     System.out.println("[TS] Received telemetry message: " + receivedMsg.toString());
+                    mothership.updateRoverInfoWithTelemetry(receivedMsg);
                 }
             }
         } catch (IOException e) {

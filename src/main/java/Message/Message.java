@@ -5,7 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 public class Message  {
-    public static int msgIds = 1;
+    private static int msgIds = 1;
     private final int sequenceNumber;
     private final int messageId;            // each "conversation" will share an id
     private final MessageDataTypes messageDataType;
@@ -16,6 +16,19 @@ public class Message  {
         REQUEST_MISSION,
         MISSION_UPDATE,
         ROVER_TELEMETRY;
+    }
+
+    public int getSequenceNumber() {
+        return this.sequenceNumber;
+    }
+    public int getMessageId() {
+        return this.messageId;
+    }
+    public MessageDataTypes getMessageDataType() {
+        return this.messageDataType;
+    }
+    public MessageData getMessageData() {
+        return this.data;
     }
 
     public Message(int sequenceNumber, MessageDataTypes messageDataType, MessageData data) {

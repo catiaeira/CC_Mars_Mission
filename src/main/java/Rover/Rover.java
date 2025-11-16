@@ -1,7 +1,4 @@
 package Rover;
-import Connection.MissionLinkClient;
-import Connection.NetworkConfig;
-import Connection.TelemetryStreamClient;
 import Utils.Point3D;
 
 import java.util.ArrayList;
