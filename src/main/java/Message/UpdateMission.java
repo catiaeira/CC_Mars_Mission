@@ -65,11 +65,11 @@ public class UpdateMission implements MessageData {
 
     @Override
     public String toString() {
-        return "UpdateMission{" +
-                "idMission=" + idMission +
-                ", idRover=" + idRover +
-                ", completionLevel=" + completionLevel +
-                ", extraData=" + Arrays.toString(extraData) +
+        return "UpdateMission { " +
+                "idMission = " + idMission +
+                ", idRover = " + idRover +
+                ", completionLevel = " + completionLevel +
+                ", extraData = " + Arrays.toString(extraData) +
                 '}';
     }
 }

@@ -11,16 +11,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RoverTelemetryMessage implements MessageData{
-    private int id;
-    private Point3D position;
-    private Rover.MissionState state;
-    private int batteryLevel;
-    private List<String> inventory;
-    private List <PhysicalState> physicalStates;
+    public int id;
+    public Point3D position;
+    public Rover.MissionState state;
+    public int batteryLevel;
+    public List<String> inventory;
+    public List <PhysicalState> physicalStates;
 
     public RoverTelemetryMessage (Rover rover){
         this.id = rover.getId();
         this.position = rover.getPosition();
+        this.state = rover.getState();
         this.physicalStates = rover.getPhysicalStates();
         this.physicalStates = rover.getPhysicalStates();
         this.batteryLevel = rover.getBatteryLevel();
@@ -127,13 +128,13 @@ public class RoverTelemetryMessage implements MessageData{
 
     @Override
     public String toString() {
-        return "RoverTelemetryMessage{" +
-                "id=" + id +
-                ", position=" + position +
-                ", state=" + state +
-                ", batteryLevel=" + batteryLevel +
-                ", inventory=" + inventory +
-                ", physicalStates=" + physicalStates +
+        return "RoverTelemetryMessage { " +
+                "id = " + id +
+                ", position = " + position +
+                ", state = " + state +
+                ", batteryLevel = " + batteryLevel +
+                ", inventory = " + inventory +
+                ", physicalStates = " + physicalStates +
                 '}';
     }
 }

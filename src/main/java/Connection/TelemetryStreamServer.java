@@ -1,13 +1,18 @@
 package Connection;
 
+import Message.Message;
+
 import java.io.*;
 import java.net.*;
+import Mothership.Mothership;
 
 public class TelemetryStreamServer implements Runnable {
     private int port;
+    private Mothership mothership;
 
-    public TelemetryStreamServer(int port) {
+    public TelemetryStreamServer(int port, Mothership mothership) {
         this.port = port;
+        this.mothership = mothership;
     }
 
     @Override
@@ -25,10 +30,18 @@ public class TelemetryStreamServer implements Runnable {
     }
 
     private void handleRover(Socket socket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-            String line;
-            while ((line = in.readLine()) != null) {
-                System.out.println("[TS] Telemetry: " + line); // not printing
+        try(DataInputStream in = new DataInputStream(socket.getInputStream())) {
+            while (true) {
+                int length = in.readInt();
+                if (length > 0) {
+                    byte[] messageBytes = new byte[length];
+
+                    in.readFully(messageBytes);
+
+                    Message receivedMsg = Message.convertBytesToMessage(messageBytes);
+                    System.out.println("[TS] Received telemetry message: " + receivedMsg.toString());
+                    mothership.updateRoverInfoWithTelemetry(receivedMsg);
+                }
             }
         } catch (IOException e) {
             System.out.println("[TS] Rover disconnected.");

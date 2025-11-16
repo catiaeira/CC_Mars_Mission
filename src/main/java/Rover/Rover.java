@@ -1,7 +1,4 @@
 package Rover;
-import Connection.MissionLinkClient;
-import Connection.NetworkConfig;
-import Connection.TelemetryStreamClient;
 import Utils.Point3D;
 
 import java.util.ArrayList;
@@ -57,22 +54,17 @@ public class Rover {
     public void setBatteryLevel(int batteryLevel) {this.batteryLevel = batteryLevel;}
 
     public static void main(String[] args) {
-        NetworkConfig networkConfig = new NetworkConfig();
-        String mothership_id = networkConfig.getIp(NetworkConfig.ID.MOTHERSHIP_IP);
-        String ml_port = networkConfig.getIp(NetworkConfig.ID.MISSION_LINK_PORT);
-        String ts_port = networkConfig.getIp(NetworkConfig.ID.TELEMETRY_STREAM_PORT);
+        int id = Integer.parseInt(args[0]);
+        ArrayList<PhysicalState> physicalStates = new ArrayList<>();
+        physicalStates.add(new PhysicalState("wheels", 100));
+        physicalStates.add(new PhysicalState("camera", 80));
 
-        try {
-            Thread udpThread = new Thread(new MissionLinkClient(mothership_id, Integer.parseInt(ml_port)));
-            Thread tcpThread = new Thread(new TelemetryStreamClient(mothership_id, Integer.parseInt(ts_port)));
-
-            udpThread.start();
-            tcpThread.start();
-
-            System.out.println("Rover online: MissionLink (UDP) + TelemetryStream (TCP) active");
-        } catch (Exception e) {
-            System.out.println("Failed to establish connections: " + e.getMessage());
-            e.printStackTrace();
+        Rover rover = new Rover(id, new Point3D(0,0,0), physicalStates);
+        RoverConnection connection = new RoverConnection(rover);
+        connection.connectServer();
+        connection.sendTelemetry();
+        if (rover.state == MissionState.IDLE)  {
+            connection.requestMission();
         }
     }
 }

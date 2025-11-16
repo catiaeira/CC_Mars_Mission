@@ -5,7 +5,9 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 public class Message  {
+    private static int msgIds = 1;
     private final int sequenceNumber;
+    private final int messageId;            // each "conversation" will share an id
     private final MessageDataTypes messageDataType;
     private final MessageData data;
 
@@ -16,8 +18,29 @@ public class Message  {
         ROVER_TELEMETRY;
     }
 
+    public int getSequenceNumber() {
+        return this.sequenceNumber;
+    }
+    public int getMessageId() {
+        return this.messageId;
+    }
+    public MessageDataTypes getMessageDataType() {
+        return this.messageDataType;
+    }
+    public MessageData getMessageData() {
+        return this.data;
+    }
+
     public Message(int sequenceNumber, MessageDataTypes messageDataType, MessageData data) {
         this.sequenceNumber = sequenceNumber;
+        this.messageId = msgIds++;
+        this.messageDataType = messageDataType;
+        this.data = data;
+    }
+
+    public Message(int sequenceNumber, int messageId, MessageDataTypes messageDataType, MessageData data) {
+        this.sequenceNumber = sequenceNumber;
+        this.messageId = messageId;
         this.messageDataType = messageDataType;
         this.data = data;
     }
@@ -27,6 +50,7 @@ public class Message  {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
 
             out.write((byte) sequenceNumber);
+            out.write((byte) messageId);
             out.write((byte) messageDataType.ordinal());
 
             byte[] dataBytes = data.convertMessageDataToBytes();
@@ -53,6 +77,7 @@ public class Message  {
         int totalLength = Byte.toUnsignedInt(buffer.get());
 
         int sequenceNumber = Byte.toUnsignedInt(buffer.get());
+        int messageId = Byte.toUnsignedInt(buffer.get());
         int messageDataTypeOrdinal = Byte.toUnsignedInt(buffer.get());
         MessageDataTypes dataType = MessageDataTypes.values()[messageDataTypeOrdinal];
 
@@ -68,15 +93,16 @@ public class Message  {
             case REQUEST_MISSION -> mData = RequestMission.convertBytesToMessageData(dataBytes);
             case ROVER_TELEMETRY -> mData = RoverTelemetryMessage.convertBytesToMessageData(dataBytes);
         }
-        return new Message (sequenceNumber, dataType, mData);
+        return new Message (sequenceNumber, messageId, dataType, mData);
     }
 
     @Override
     public String toString() {
-        return "Message{" +
-                "sequenceNumber=" + sequenceNumber +
-                ", messageDataType=" + messageDataType +
-                ", data=" + data.toString() +
+        return "Message { " +
+                "sequenceNumber = " + sequenceNumber +
+                ", messageId = " + messageId +
+                ", messageDataType = " + messageDataType +
+                ", data = " + data.toString() +
                 '}';
     }
 }

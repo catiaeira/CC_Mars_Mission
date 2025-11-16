@@ -28,4 +28,8 @@ public class PhysicalState {
         PhysicalState ps = new PhysicalState(partName, condition);
         return ps;
     }
+    @Override
+    public String toString () {
+        return partName + " " + condition;
+    }
 }
