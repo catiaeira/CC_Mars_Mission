@@ -5,6 +5,7 @@ import Rover.Rover;
 import Utils.Point3D;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -14,7 +15,7 @@ public class RoverTelemetryMessage implements MessageData{
     public int id;
     public Point3D position;
     public Rover.MissionState state;
-    public int batteryLevel;
+    public double batteryLevel;
     public List<String> inventory;
     public List <PhysicalState> physicalStates;
 
@@ -28,7 +29,7 @@ public class RoverTelemetryMessage implements MessageData{
         this.inventory = rover.getInventory();
     }
 
-    public RoverTelemetryMessage (int id,  Point3D position, Rover.MissionState missionState, int batteryLevel, List<String> inventory, List <PhysicalState> physicalStates) {
+    public RoverTelemetryMessage (int id,  Point3D position, Rover.MissionState missionState, double batteryLevel, List<String> inventory, List <PhysicalState> physicalStates) {
         this.id = id;
         this.position = position;
         this.state = missionState;
@@ -40,33 +41,37 @@ public class RoverTelemetryMessage implements MessageData{
     @Override
     public byte[] convertMessageDataToBytes() {
         try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 
-            out.write((byte) id);
-            out.write((byte) position.x);
-            out.write((byte) position.y);
-            out.write((byte) position.z);
-            out.write((byte) state.ordinal());
-            out.write((byte) batteryLevel);
+            try (DataOutputStream out = new DataOutputStream(byteOut)) {
 
-            out.write((byte) inventory.size());
-            for (String item : inventory) {
-                byte[] nameBytes = item.getBytes(StandardCharsets.UTF_8);
-                out.write((byte) nameBytes.length);
-                out.write(nameBytes);
+                out.write(id);
+                out.write(position.x);
+                out.write(position.y);
+                out.write(position.z);
+                out.write(state.ordinal());
+
+                out.writeDouble(batteryLevel);
+
+                out.write(inventory.size());
+                for (String item : inventory) {
+                    byte[] nameBytes = item.getBytes(StandardCharsets.UTF_8);
+                    out.write(nameBytes.length);
+                    out.write(nameBytes);
+                }
+
+                out.write((byte) physicalStates.size());
+                for (PhysicalState ps : physicalStates) {
+                    byte[] psBytes = ps.toByteArray();
+                    out.write((byte) psBytes.length);
+                    out.write(psBytes);
+                }
+
             }
-
-            out.write((byte) physicalStates.size());
-            for (PhysicalState ps : physicalStates) {
-                byte[] psBytes = ps.toByteArray();
-                out.write((byte) psBytes.length);
-                out.write(psBytes);
-            }
-
-            byte[] bytes = out.toByteArray();
+            byte[] bytes = byteOut.toByteArray();
 
             byte[] bytesWithLength = new byte[bytes.length+1];
-            bytesWithLength[0] = (byte) out.size();
+            bytesWithLength[0] = (byte) byteOut.size();
             System.arraycopy(bytes, 0, bytesWithLength, 1, bytes.length);
 
             return bytesWithLength;
@@ -94,13 +99,14 @@ public class RoverTelemetryMessage implements MessageData{
     public static RoverTelemetryMessage convertBytesToMessageData(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
+
         int totalLength = Byte.toUnsignedInt(buffer.get());
         int id = Byte.toUnsignedInt(buffer.get());
         int x = Byte.toUnsignedInt(buffer.get());
         int y = Byte.toUnsignedInt(buffer.get());
         int z = Byte.toUnsignedInt(buffer.get());
         int stateOrdinal = Byte.toUnsignedInt(buffer.get());
-        int batteryLevel = Byte.toUnsignedInt(buffer.get());
+        double batteryLevel = buffer.getDouble();
 
         int invCount = Byte.toUnsignedInt(buffer.get());
         List<String> inventory = new ArrayList<>();

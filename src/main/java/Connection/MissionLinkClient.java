@@ -3,6 +3,7 @@ package Connection;
 import Message.Message;
 import Message.RoverInitMessage;
 import Message.Package;
+import Message.MissionMessage;
 import Rover.Rover;
 
 import java.io.IOException;
@@ -49,18 +50,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
     public void processMessageContent(Message msg, DatagramPacket packet) {
         System.out.println("[ML] Received: " + msg.toString());
-
-        switch (msg.getMessageDataType()) {
-            case ROVER_INIT:
-                RoverInitMessage message = (RoverInitMessage) msg.getMessageData();
-                rover.setId(message.id);
-                break;
-            case MISSION:
-                // get assigned a new mission...
-                break;
-            default:
-                break;
-        }
+        rover.processMessage(msg.getMessageDataType(), msg.getMessageData());
     }
 
     @Override

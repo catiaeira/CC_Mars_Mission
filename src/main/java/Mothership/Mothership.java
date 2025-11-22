@@ -6,9 +6,10 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import Message.RoverTelemetryMessage;
-import Message.RoverInitMessage;
-import Message.ACKMessage;
+import Message.*;
+import Message.MissionMessage;
+import Mission.Mission;
+import Utils.Point3D;
 
 public class Mothership { // controller
     List<RoverInfo> rovers = new ArrayList<RoverInfo>();
@@ -50,7 +51,13 @@ public class Mothership { // controller
                 );
                 break;
             case REQUEST_MISSION:
-                // assign mission...
+                System.out.println("sending mission after request");
+                reply = new Message(receivedMsg.getSequenceNumber()+1,
+                        receivedMsg.getMessageId(),
+                        Message.MessageDataTypes.MISSION,
+                        new MissionMessage(1, 1, Mission.MissionType.COLLECT_ROCKS,
+                                new Point3D(30,10,5), 10, 60, 20,
+                                false, false));
                 break;
             default:
                 break;
