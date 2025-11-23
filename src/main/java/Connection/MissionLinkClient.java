@@ -4,6 +4,7 @@ import Message.Message;
 import Message.RoverInitMessage;
 import Message.Package;
 import Rover.Rover;
+import Utils.UDPPrint;
 
 import java.io.IOException;
 import java.net.*;
@@ -18,6 +19,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
     // 1. ALTERAÇÃO: Variável para guardar a referência do Sender
     private MissionLinkSender sender;
+    private int lastProcessedSeq = -1; // Variável de memória essencial
 
     public MissionLinkClient(String serverIP, int serverPort, Rover rover) {
         this.serverIP = serverIP;
@@ -57,30 +59,37 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
     @Override
     public void processMessageContent(Message msg, DatagramPacket packet) {
-        System.out.println("[ML] Received: " + msg.toString());
-
-        // 3. ALTERAÇÃO: Lógica de Fiabilidade (Stop-and-Wait)
-        // Verifica se a mensagem traz um ACK no cabeçalho (Piggybacking ou ACK puro)
-        if (msg.getAckNumber() != -1) {
-            System.out.println("[ML-Client] ACK Recebido no cabeçalho: " + msg.getAckNumber());
-            if (this.sender != null) {
-                // Avisa a thread Sender que o pacote foi confirmado para ela avançar
-                this.sender.confirmAck(msg.getAckNumber());
-            }
+        // 1. Processar ACK (Silencioso, ou podes por log normal se quiseres)
+        if (msg.getAckNumber() != -1 && this.sender != null) {
+            this.sender.confirmAck(msg.getAckNumber());
         }
 
-        // Lógica original de processamento de conteúdo
+        // 2. FILTRO DE DUPLICADOS (VERMELHO)
+        if (msg.getSequenceNumber() <= lastProcessedSeq) {
+            UDPPrint.logError("RCV", msg, "Já processado. Ignorado.");
+            return;
+        }
+
+        // Atualizar memória
+        lastProcessedSeq = msg.getSequenceNumber();
+
+        // 3. PROCESSAMENTO REAL (VERDE)
         switch (msg.getMessageDataType()) {
             case ROVER_INIT:
                 RoverInitMessage message = (RoverInitMessage) msg.getMessageData();
                 rover.setId(message.id);
+                UDPPrint.logSuccess("RCV", msg, "ID Atribuído: " + message.id);
                 break;
+
             case MISSION:
-                System.out.println("[ML] NOVA MISSÃO RECEBIDA!");
-                // Aqui deves adicionar a lógica para guardar a missão no Rover
-                // Ex: rover.setMission((MissionMessage) msg.getMessageData());
+                // Aqui é o momento "glória" - recebemos a missão!
+                UDPPrint.logSuccess("RCV", msg, "NOVA MISSÃO ACEITE E GUARDADA!");
+                // rover.setMission(...)
                 break;
+
             default:
+                // Outras mensagens (como ACKs puros) ficam em log normal ou silêncio
+                // WiresharkLogger.log("RCV", msg, "ACK/Outro recebido", false);
                 break;
         }
     }

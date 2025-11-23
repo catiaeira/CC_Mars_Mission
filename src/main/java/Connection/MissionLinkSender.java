@@ -2,7 +2,7 @@ package Connection;
 
 import Message.Message;
 import Message.Package;
-
+import Utils.UDPPrint;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -45,12 +45,18 @@ public class MissionLinkSender implements Runnable {
                 Package pkg = outgoingQueue.take();
                 Message msg = pkg.getMessage();
 
-                // OTIMIZAÇÃO: Resolver o endereço APENAS UMA VEZ antes de tentar enviar
+                // Resolver IP uma única vez
                 InetAddress ipAddress = InetAddress.getByName(pkg.getToIp());
                 int port = pkg.getToPort();
 
-                // Configurar o que estamos à espera (Seq + Tamanho do Payload)
-                int payloadSize = (msg.getMessageData() != null) ? msg.getMessageData().convertMessageDataToBytes().length : 0;
+                // Calcular ACK Esperado
+                int payloadSize = 0;
+                try {
+                    if (msg.getMessageData() != null) {
+                        payloadSize = msg.getMessageData().convertMessageDataToBytes().length;
+                    }
+                } catch (Exception e) { payloadSize = 0; }
+
                 int expectedAck = msg.getSequenceNumber() + (payloadSize > 0 ? payloadSize : 1);
 
                 synchronized (lock) {
@@ -59,21 +65,25 @@ public class MissionLinkSender implements Runnable {
                 }
 
                 boolean sentSuccessfully = false;
-                int attempts = 0; // Só para debug visual
+                int attempts = 0;
 
                 while (!sentSuccessfully) {
                     attempts++;
 
                     // 2. ENVIAR (ou Reenviar)
                     byte[] data = msg.convertMessageToBytes();
-                    // Usamos o IP já resolvido fora do loop
                     DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, port);
-
                     socket.send(packet);
 
-                    if (attempts > 1) System.out.println("[ML-Sender] RETRANSMITINDO (Tentativa " + attempts + ")...");
-                    else
-                        System.out.println("[ML-Sender] Enviado Seq: " + msg.getSequenceNumber() + ". À espera de ACK: " + expectedAck);
+                    // --- LOGGING ESTILO WIRESHARK ---
+                    if (attempts > 1) {
+                        // Retransmissão (Fundo Vermelho)
+                        UDPPrint.log("SND", msg, "Retransmissão #" + attempts + " -> " + pkg.getToIp(), true);
+                    } else {
+                        // Envio Normal (Ciano)
+                        UDPPrint.log("SND", msg, "Para: " + pkg.getToIp() + " (Espera ACK " + expectedAck + ")", false);
+                    }
+                    // --------------------------------
 
                     // 3. ESPERAR PELO ACK (com Timeout)
                     synchronized (lock) {
@@ -82,11 +92,11 @@ public class MissionLinkSender implements Runnable {
                         }
 
                         if (ackReceived) {
-                            System.out.println("[ML-Sender] ACK recebido! Avançando.");
+                            // Sucesso! (Opcional: log verde discreto)
+                            // System.out.println(WiresharkLogger.GREEN + "   └── [ML-SND] Confirmado!" + WiresharkLogger.RESET);
                             sentSuccessfully = true;
                         } else {
-                            System.out.println("[ML-Sender] Timeout! ACK não chegou.");
-                            // O loop repete-se
+                            // Timeout! O loop vai repetir e imprimir a vermelho na próxima volta
                         }
                     }
                 }

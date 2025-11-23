@@ -41,7 +41,7 @@ public class Mothership { // controller
     public Message generateReply(Message receivedMsg) {
         Message reply = null;
 
-        // 1. CALCULAR O ACK
+        // 1. CALCULAR O ACK (Lógica TCP)
         int payloadSize = 0;
         if (receivedMsg.getMessageData() != null) {
             payloadSize = receivedMsg.getMessageData().convertMessageDataToBytes().length;
@@ -49,31 +49,32 @@ public class Mothership { // controller
         int ackNum = receivedMsg.getSequenceNumber() + (payloadSize > 0 ? payloadSize : 1);
 
         switch (receivedMsg.getMessageDataType()) {
-            case ACK:
-                return null;
 
+            // --- PREVENÇÃO DE LOOP ---
+            case ACK:
+                return null; // Não responder a ACKs para evitar loops infinitos
+
+            // --- INICIALIZAÇÃO ---
             case ROVER_INIT:
                 RoverInitMessage initMsg = (RoverInitMessage) receivedMsg.getMessageData();
                 int idParaRegistar;
 
-                // 1. Decidir qual o ID
+                // Decidir ID (Manter o existente ou criar novo)
                 if (initMsg.id > 0) {
                     idParaRegistar = initMsg.id;
                 } else {
                     idParaRegistar = rovers.size() + 1;
                 }
 
-                // 2. LÓGICA DE PROTEÇÃO (IDEMPOTÊNCIA)
-                // Se o Rover já existe, NÃO criamos novo registo, apenas preparamos a resposta.
+                // Idempotência: Só cria se não existir
                 if (!rovers.containsKey(idParaRegistar)) {
                     System.out.println("[Mothership] A registar NOVO Rover: " + idParaRegistar);
                     RoverInfo rInfo = new RoverInfo(idParaRegistar, null, 0);
                     rovers.put(idParaRegistar, rInfo);
                 } else {
-                    System.out.println("[Mothership] Rover " + idParaRegistar + " já existe. A reenviar confirmação.");
+                    System.out.println("[Mothership] Rover " + idParaRegistar + " já existe. Reenviando confirmação.");
                 }
 
-                // 3. Responder sempre com o mesmo ID
                 reply = new Message(
                         this.localSequenceNumber++,
                         ackNum,
@@ -82,26 +83,34 @@ public class Mothership { // controller
                 );
                 break;
 
+            // --- PEDIDO DE MISSÃO (Com Cache) ---
             case REQUEST_MISSION:
                 RequestMission req = (RequestMission) receivedMsg.getMessageData();
                 RoverInfo rInfo = this.rovers.get(req.getIdRover());
 
-                // Filtro de Duplicados
+                // A. VERIFICAR SE É RETRANSMISSÃO
+                // Se conhecemos o Rover E o número de sequência é antigo...
                 if (rInfo != null && receivedMsg.getSequenceNumber() <= rInfo.getLastProcessedSequenceNumber()) {
-                    System.out.println("[Mothership] Pedido duplicado ignorado (Seq " + receivedMsg.getSequenceNumber() + ").");
+                    System.out.println("[Mothership] ⚠️ Detetada retransmissão (Seq " + receivedMsg.getSequenceNumber() + ").");
+
+                    // Tentar recuperar a resposta da CACHE
+                    Message cached = rInfo.getLastSentMessage();
+                    if (cached != null) {
+                        System.out.println("[Mothership] 🔄 Reenviando a Missão guardada em cache.");
+                        return cached; // <--- RETORNA A MENSAGEM ORIGINAL (MISSÃO)
+                    }
+                    // Se não houver cache, sai do switch e manda ACK simples
                     break;
                 }
+
+                // B. PROCESSAMENTO DE PEDIDO NOVO
                 if (rInfo != null) {
                     rInfo.setLastProcessedSequenceNumber(receivedMsg.getSequenceNumber());
                 }
 
-                // CORREÇÃO 2: Usar o ID correto na Missão
-                // Antes tinhas: new Mission(1, ...) -> Isto forçava o ID a 1
-                // Agora usamos: req.getIdRover()
-                System.out.println("[Mothership] A criar Missão para Rover " + req.getIdRover());
-
+                System.out.println("[Mothership] A criar Nova Missão para Rover " + req.getIdRover());
                 Mission novaMissao = new Mission(
-                        req.getIdRover(), // <--- ID DINÂMICO AQUI
+                        req.getIdRover(), // Usa o ID correto do Rover
                         Mission.MissionType.EXPLORE,
                         new Point3D(50,50,0),
                         100, 600, 60
@@ -113,13 +122,18 @@ public class Mothership { // controller
                         Message.MessageDataTypes.MISSION,
                         new MissionMessage(novaMissao)
                 );
+
+                // C. GUARDAR NA CACHE (Para futuras retransmissões)
+                if (rInfo != null) {
+                    rInfo.setLastSentMessage(reply);
+                }
                 break;
 
             default:
                 break;
         }
 
-        // Fallback: ACK puro
+        // Fallback: Envia ACK puro (para ACKs perdidos sem dados ou erros)
         if (reply == null) {
             reply = new Message(
                     this.localSequenceNumber++,
@@ -130,6 +144,12 @@ public class Mothership { // controller
         }
 
         return reply;
+    }
+    public void removeRover(int roverId) {
+        if (rovers.containsKey(roverId)) {
+            rovers.remove(roverId);
+            System.out.println("[Mothership] Rover " + roverId + " desconectado e removido da lista.");
+        }
     }
 
 }
