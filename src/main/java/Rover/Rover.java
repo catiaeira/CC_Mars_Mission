@@ -18,7 +18,9 @@ public class Rover {
     private List<String> inventory = new ArrayList<>();
     private final int maxInventorySpace;
     private List <PhysicalState> physicalStates;
-    private RoverMissions roverMissions;
+
+    private final RoverMissions roverMissions;
+    private final RoverConnection roverConnection;
 
     public enum MissionState {
         IN_MISSION,
@@ -34,8 +36,9 @@ public class Rover {
         this.base = new Base(position);
         this.physicalStates = new ArrayList<>();
         this.physicalStates.addAll(physicalStates);
-        this.roverMissions = new RoverMissions(this);
         this.maxInventorySpace = inventorySpace;
+        this.roverMissions = new RoverMissions(this);
+        this.roverConnection = new RoverConnection(this);
     }
 
     public int getId() {
@@ -72,15 +75,14 @@ public class Rover {
         physicalStates.add(new PhysicalState("camera", 80));
 
         Rover rover = new Rover( new Point3D(0,0,0), physicalStates, 5);
-        RoverConnection connection = new RoverConnection(rover);
-        connection.connectServer();
-        connection.sendInit();
+        rover.roverConnection.connectServer();
+        rover.roverConnection.sendInit();
         Thread.sleep(1000); // TEMPORARY
 
         rover.roverMissions.run();
-        connection.sendTelemetry();
+        rover.roverConnection.sendTelemetry();
         if (rover.state == MissionState.IDLE)  {
-            connection.requestMission();
+            rover.roverConnection.requestMission();
         }
     }
 
@@ -122,5 +124,8 @@ public class Rover {
         }
 
         return reply;
+    }
+    public void sendUpdateMission (UpdateMission mission) {
+        this.roverConnection.sendUpdateMission(mission);
     }
 }

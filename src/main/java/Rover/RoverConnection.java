@@ -5,6 +5,7 @@ import Connection.NetworkConfig;
 import Connection.TelemetryStreamClient;
 import Message.Message;
 import Message.RequestMission;
+import Message.UpdateMission;
 import Message.RoverTelemetryMessage;
 import Message.RoverInitMessage;
 
@@ -27,6 +28,12 @@ public class RoverConnection {
         missionLinkClient.enqueueMessage(msg);
         System.out.println("[Rover] sent an init message.");
         // NEEDS TO BLOCK UNTIL IT RECEIVES REPLY
+    }
+
+    public void sendUpdateMission (UpdateMission updateMission) {
+        Message msg = new Message(0, Message.MessageDataTypes.MISSION_UPDATE, updateMission);
+        missionLinkClient.enqueueMessage(msg);
+        System.out.println("[Rover " + this.rover.getId() + "] sent a mission update.");
     }
 
     public void sendTelemetry() {

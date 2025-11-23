@@ -1,16 +1,24 @@
 package Rover;
 
+import Message.UpdateMission;
 import Mission.Mission;
 import Utils.Point3D;
 
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class RoverMissions {
     private final Rover rover;
     private final PriorityBlockingQueue<Mission> missionsToDo;
-    private Mission currentMission = null;
+    private volatile Mission currentMission = null;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private long missionStartTime = 0;
 
     public RoverMissions(Rover rover) {
         this.rover = rover;
@@ -32,9 +40,9 @@ public class RoverMissions {
     final double CHARGE_RATE = 5; // per second
     final double SPEED = 1; // per second
     final double CONSUMPTION_WALKING = 0.1; // per sec
-    final double CONSUMPTION_COLLECTING_ROCKS = 0.5;
+    final double CONSUMPTION_COLLECTING_ROCKS = 1;
     final double CONSUMPTION_EXPLORE = 2;
-    final double CONSUMPTION_GETTING_SAMPLES = 1;
+    final double CONSUMPTION_GETTING_SAMPLES = 0.5;
 
     public void run () {
         new Thread(() -> {
@@ -104,7 +112,7 @@ public class RoverMissions {
             if     (random.nextInt(100) < 5 &&                              // 5% chance every second
                     missionCollectsItems(missionType) &&                           // mission involves items
                     rover.getMaxInventorySpace() > rover.getInventory().size()){   // must have inventory space
-                System.out.println("[MISSION] New item added!");
+                System.out.println("[MISSION] New item added to inventory!");
                 if      (missionType == Mission.MissionType.COLLECT_ROCKS)   rover.addToInventory("ROCK");
                 else if (missionType == Mission.MissionType.TEST_ATMOSPHERE) rover.addToInventory("SAMPLE");
             }
@@ -116,7 +124,7 @@ public class RoverMissions {
         if (canDoNextMission()) {
             currentMission = missionsToDo.take();
             rover.setState(Rover.MissionState.ON_THE_WAY);
-            System.out.print("[MISSION -> NEW MISSION] Finished!");    // decision to on the way to new mission
+            System.out.print("[MISSION -> ON THE WAY TO NEW MISSION] Finished!");    // decision to on the way to new mission
             return System.currentTimeMillis() + currentMission.getMissionTime() * 1000L;
         }
         else {
@@ -145,7 +153,7 @@ public class RoverMissions {
         }
         rover.setBatteryLevel(100);
         rover.setState(Rover.MissionState.IDLE);        // decision to idle
-        System.out.printf("[CHARGING -> IDLE] CHARGE COMPLETE! Battery now %d.\n", rover.getBatteryLevel());
+        System.out.printf("[CHARGING -> IDLE] CHARGE COMPLETE! Battery now %.2f.\n", rover.getBatteryLevel());
     }
 
     private long onTheWay(long busyUntil) throws InterruptedException {
@@ -175,14 +183,15 @@ public class RoverMissions {
             // decision to become in mission
             rover.setPosition(currentMission.getAreaCoordinates());
             rover.setState(Rover.MissionState.IN_MISSION);
-            System.out.print("[ON THE WAY -> MISSION] Has arrived!");
+            System.out.println("[ON THE WAY -> MISSION] Has arrived!");
+            startNewMission (currentMission);
             return System.currentTimeMillis() + currentMission.getMissionTime() * 1000L;
         }
         // pick another mission if there's enough battery
         else if (canDoNextMission()) {
             currentMission = missionsToDo.take();
             rover.setState(Rover.MissionState.ON_THE_WAY);
-            System.out.print("[ON THE WAY -> NEW MISSION] Has arrived!");
+            System.out.println("[ON THE WAY -> NEW MISSION] Has arrived!");
             return System.currentTimeMillis() + currentMission.getMissionTime() * 1000L;
 
         } else { // arrived to base
@@ -197,13 +206,16 @@ public class RoverMissions {
 
     private void decrementBattery (double timeElapsed) throws IllegalArgumentException {
         if (timeElapsed < 0) throw new IllegalArgumentException();
-        double batteryDecrement = timeElapsed * getBatteryRate(currentMission.getMissionType()) / 1000 ;
+
+        double batteryDecrement;
+        if (rover.getState() == Rover.MissionState.ON_THE_WAY) batteryDecrement = timeElapsed * CONSUMPTION_WALKING / 1000 ;
+        else batteryDecrement = timeElapsed * getBatteryRate(currentMission.getMissionType()) / 1000 ;
+
         double newBatteryLevel = rover.getBatteryLevel() - batteryDecrement;
         if (newBatteryLevel < 0 || newBatteryLevel > 100) throw new IllegalArgumentException();
 
         rover.setBatteryLevel(newBatteryLevel);
-        System.out.printf("[BATTERY USAGE] Battery Telemetry: -%.2f%%. Current Level: %.2f\n",
-                batteryDecrement, rover.getBatteryLevel());
+        //System.out.printf("[BATTERY USAGE] Battery Telemetry: -%.2f%%. Current Level: %.2f\n", batteryDecrement, rover.getBatteryLevel());
     }
 
     private boolean willBatterySurvive (Mission m) {
@@ -251,5 +263,47 @@ public class RoverMissions {
 
     private boolean missionCollectsItems(Mission.MissionType missionType) {
         return missionType == Mission.MissionType.COLLECT_ROCKS || missionType == Mission.MissionType.TEST_ATMOSPHERE;
+    }
+
+    // Sending mission updates vvv
+
+    public void startNewMission(Mission newMission) {
+        this.currentMission = newMission;
+        this.missionStartTime = System.currentTimeMillis();
+
+        scheduler.scheduleAtFixedRate(this::sendUpdate,
+                0, // initial delay
+                newMission.getUpdateTime(),
+                TimeUnit.SECONDS);
+    }
+
+    private void sendUpdate() {
+        if (currentMission == null) return;
+
+        Mission currM = this.currentMission;
+        long currentTime = System.currentTimeMillis();
+
+        long totalDuration = currM.getMissionTime() * 1000L;
+        long timeElapsed = currentTime - missionStartTime;
+
+        int progressPercent = 0;
+        if (totalDuration > 0) progressPercent = (int) Math.min(100, Math.round((double) timeElapsed / totalDuration * 100));
+
+
+        UpdateMission updateMission = new UpdateMission(
+                currM.getMissionId(),
+                rover.getId(),
+                progressPercent
+        );
+
+        try {
+            rover.sendUpdateMission(updateMission);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (progressPercent >= 100) {
+            scheduler.close();
+        }
     }
 }
