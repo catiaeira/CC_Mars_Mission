@@ -37,8 +37,8 @@ public class Rover {
         this.physicalStates = new ArrayList<>();
         this.physicalStates.addAll(physicalStates);
         this.maxInventorySpace = inventorySpace;
-        this.roverMissions = new RoverMissions(this);
         this.roverConnection = new RoverConnection(this);
+        this.roverMissions = new RoverMissions(this, roverConnection);
     }
 
     public int getId() {
@@ -71,8 +71,8 @@ public class Rover {
 
     public static void main(String[] args) throws InterruptedException {
         ArrayList<PhysicalState> physicalStates = new ArrayList<>();
-        physicalStates.add(new PhysicalState("wheels", 100));
-        physicalStates.add(new PhysicalState("camera", 80));
+        physicalStates.add(new PhysicalState("wheels", 15));
+        physicalStates.add(new PhysicalState("camera", 10));
 
         Rover rover = new Rover( new Point3D(0,0,0), physicalStates, 5);
         rover.roverConnection.connectServer();
@@ -81,9 +81,6 @@ public class Rover {
 
         rover.roverMissions.run();
         rover.roverConnection.sendTelemetry();
-        if (rover.state == MissionState.IDLE)  {
-            rover.roverConnection.requestMission();
-        }
     }
 
     public void processMessage(MessageDataTypes type, MessageData msg) {

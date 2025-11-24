@@ -5,6 +5,7 @@ import Message.Message;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.PriorityBlockingQueue;
 
 import Message.*;
 import Message.MissionMessage;
@@ -12,8 +13,8 @@ import Mission.Mission;
 import Utils.Point3D;
 
 public class Mothership { // controller
-    List<RoverInfo> rovers = new ArrayList<RoverInfo>();
-    // queue with missions?
+    private final List<RoverInfo> rovers = new ArrayList<RoverInfo>();
+    public MothershipMissions mothershipMissions;
 
     public void updateRoverInfoWithTelemetry (Message msg) {
         if (msg.getMessageDataType()!= Message.MessageDataTypes.ROVER_TELEMETRY) {
@@ -34,6 +35,7 @@ public class Mothership { // controller
         Mothership mothership = new Mothership();
         MothershipConnection connection = new MothershipConnection(mothership);
         connection.startServer();
+        mothership.mothershipMissions = new MothershipMissions();
     }
 
     public Message generateReply(Message receivedMsg) {
@@ -50,14 +52,15 @@ public class Mothership { // controller
                         new RoverInitMessage(newID)
                 );
                 break;
-            case REQUEST_MISSION:
+            case REQUEST_MISSION:   // send from queue if there's any, else create random mission
                 System.out.println("sending mission after request");
+                Mission mission = this.mothershipMissions.getMission();
+                if (mission == null) System.out.println("mission empty"); //shouldn't happen
+
                 reply = new Message(receivedMsg.getSequenceNumber()+1,
                         receivedMsg.getMessageId(),
                         Message.MessageDataTypes.MISSION,
-                        new MissionMessage(1, 1, Mission.MissionType.COLLECT_ROCKS,
-                                new Point3D(30,10,5), 10, 60, 20,
-                                false, false));
+                        new MissionMessage(mission));
                 break;
             default:
                 break;
@@ -73,7 +76,7 @@ public class Mothership { // controller
         return reply;
     }
 
-    public void assignRoverID (Message msg, InetAddress address, int port) {
+    public void assignRoverID (InetAddress address, int port) {
         int nextId = rovers.size()+1;
         RoverInfo roverInfo = new RoverInfo(nextId, address, port);
         rovers.add(roverInfo);

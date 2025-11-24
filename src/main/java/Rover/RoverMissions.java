@@ -6,22 +6,22 @@ import Utils.Point3D;
 
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class RoverMissions {
     private final Rover rover;
+    private final RoverConnection connection;
     private final PriorityBlockingQueue<Mission> missionsToDo;
     private volatile Mission currentMission = null;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> missionUpdateTask; // storing the mission currently sending update messages
     private long missionStartTime = 0;
 
-    public RoverMissions(Rover rover) {
+    public RoverMissions(Rover rover, RoverConnection roverConnection) {
         this.rover = rover;
+        this.connection = roverConnection;
         this.missionsToDo = new PriorityBlockingQueue<>();
     }
     public void addMission(Mission mission) {
@@ -29,15 +29,14 @@ public class RoverMissions {
     }
     /*
     TODO
-        rover needs to send update missions messages
         error case
-        mothership has to create missions automatically
+        divide missions in 2 if estimated consumption is over 100 ?
         yet to test:
             priority queue
-            start another mission
      */
     final long   LOOP_INTERVAL = 1000; // update every second
-    final double CHARGE_RATE = 5; // per second
+    final double CHARGE_RATE = 1; // per second
+    final int FIX_RATE = 5;
     final double SPEED = 1; // per second
     final double CONSUMPTION_WALKING = 0.1; // per sec
     final double CONSUMPTION_COLLECTING_ROCKS = 1;
@@ -50,20 +49,26 @@ public class RoverMissions {
                 long busyUntil = 0;
                 while (true) {
                     switch (rover.getState()) {
-                        case IDLE -> {
+                        case IDLE:
                             busyUntil = idle();
-                        }
-                        case CHARGING -> {
+                            break;
+                        case CHARGING:
                             charge(busyUntil);
                             busyUntil = 0;
-                        }
-                        case ON_THE_WAY -> {
+                            break;
+                        case ON_THE_WAY:
                             busyUntil = onTheWay(busyUntil);
-                        }
-                        case IN_MISSION -> {
+                            break;
+                        case IN_MISSION:
                             busyUntil = doMission(busyUntil);
-                        }
-                        // missing error case -> when to apply it?
+                            break;
+                        case ERROR:
+                            repair(busyUntil);
+                            busyUntil = 0;
+                            break;
+                        default:
+                            this.rover.setState(Rover.MissionState.ERROR);
+                            break;
                     }
                 }
             } catch (InterruptedException e) {
@@ -74,15 +79,12 @@ public class RoverMissions {
 
     public long idle () throws InterruptedException { // should always be at base
         System.out.println("in idle");
-        if (!rover.getPosition().equals(rover.getBase().getPosition())) System.out.println("Idle but not at base!");
+        if (!rover.getPosition().equals(rover.getBase().getPosition())) System.out.println("Idle but not at base!"); // shouldn't happen
 
-        if (currentMission == null || currentMission.isCompleted()) currentMission = missionsToDo.take(); // blocks here
-        System.out.println("has mission");
-        // decision to charge
-        if (!willBatterySurvive(currentMission)) {
-            this.rover.setState(Rover.MissionState.CHARGING);
-            System.out.println("going to charge!");
-            return System.currentTimeMillis() + Math.round (Math.ceil (timeToFullyCharge()));
+        if (doesAnyPartNeedsFixing()){
+            this.rover.setState(Rover.MissionState.ERROR);
+            System.out.println("Going to repair!");
+            return System.currentTimeMillis() + Math.round (timeToRepair()) * 1000L;
         }
         // free inventory
         List<String> inventory = rover.getInventory();
@@ -90,6 +92,32 @@ public class RoverMissions {
             System.out.println("cleaning inventory");
             inventory.forEach(inventoryItem -> {rover.getBase().addItem(inventoryItem);});
             this.rover.clearInventory();
+        }
+        // decision to charge if under 50%
+        if ((currentMission == null || currentMission.isCompleted()) && rover.getBatteryLevel() < 50) {
+            this.rover.setState(Rover.MissionState.CHARGING);
+            System.out.println("going to charge!");
+            return System.currentTimeMillis() + Math.round (timeToFullyCharge()) * 1000L;
+        }
+
+        if (currentMission == null || currentMission.isCompleted()) {
+            if (missionsToDo.isEmpty()) connection.requestMission();
+            currentMission = missionsToDo.take(); // blocks here
+        }
+        System.out.println("Has mission!");
+
+        // decision to charge if it can't make it
+        boolean willBatterySurvive = willBatterySurvive(currentMission);
+
+        if (!willBatterySurvive && this.rover.getBatteryLevel() == 100) {
+            System.out.println("Can't do mission! Discarding");
+            this.currentMission = null;
+            return System.currentTimeMillis();
+        }
+        if (!willBatterySurvive) {
+            this.rover.setState(Rover.MissionState.CHARGING);
+            System.out.println("going to charge!");
+            return System.currentTimeMillis() + Math.round (timeToFullyCharge() * 1000L);
         }
 
         System.out.println("leaving idle, becoming on the way");
@@ -104,7 +132,6 @@ public class RoverMissions {
         while (currentTime <= busyUntil) {
             long timeElapsed = Math.min(busyUntil - currentTime, LOOP_INTERVAL);
             decrementBattery (timeElapsed);
-
             // roam in mission area?
 
             // inventory management
@@ -120,6 +147,7 @@ public class RoverMissions {
             Thread.sleep(LOOP_INTERVAL);
             currentTime = System.currentTimeMillis();
         }
+        decrementParts ();
         this.currentMission.setCompleted();
         if (canDoNextMission()) {
             currentMission = missionsToDo.take();
@@ -137,14 +165,15 @@ public class RoverMissions {
     public void charge (long busyUntil) throws InterruptedException {
         System.out.println("charging");
         long currentTime = System.currentTimeMillis();
+
         while (currentTime <= busyUntil) {
             // only update battery if the time elapsed is within the remaining busyUntil time
             long timeElapsed = Math.min(busyUntil - currentTime, LOOP_INTERVAL);
 
-            double batteryIncrement = timeElapsed * CHARGE_RATE / 1000;
+            double batteryIncrement = (timeElapsed / 1000.0) * CHARGE_RATE;
             double newBatteryLevel = rover.getBatteryLevel() + batteryIncrement;
 
-            rover.setBatteryLevel((int) Math.round(Math.min(100, newBatteryLevel))); // cap at 100
+            rover.setBatteryLevel(Math.min(100, newBatteryLevel)); // cap at 100
             System.out.printf("[CHARGING] Battery Telemetry: +%.2f%%. Current Level: %.2f\n",
                     batteryIncrement, rover.getBatteryLevel());
 
@@ -178,6 +207,7 @@ public class RoverMissions {
             Thread.sleep(LOOP_INTERVAL);
             currentTime = System.currentTimeMillis();
         }
+        decrementParts();
 
         if (!currentMission.isCompleted()) { // has just arrived at the mission site
             // decision to become in mission
@@ -204,15 +234,77 @@ public class RoverMissions {
         }
     }
 
+    public void repair (long busyUntil) throws InterruptedException {
+        System.out.println("repairing");
+        long currentTime = System.currentTimeMillis();
+
+        while (currentTime <= busyUntil) {
+            long timeElapsed = Math.min(busyUntil - currentTime, LOOP_INTERVAL);
+            for (PhysicalState ps : rover.getPhysicalStates()) {
+                if (ps.getCondition() >= 100) continue;
+                int increment = Math.toIntExact((timeElapsed / 1000L) * FIX_RATE);
+                int conditionLevel = ps.getCondition() + increment;
+
+                ps.setCondition(Math.min(100, conditionLevel)); // cap at 100
+                System.out.printf("[REPAIRING] Repairing part '%s': +%d%%. Current Level: %d\n",
+                        ps.getName(),increment, ps.getCondition());
+
+                Thread.sleep(LOOP_INTERVAL);
+                currentTime = System.currentTimeMillis();
+            }
+        }
+        rover.getPhysicalStates().forEach(p -> p.setCondition(100));
+        rover.setState(Rover.MissionState.IDLE);        // decision to idle
+        System.out.println("[REPAIRING -> IDLE] REPAIR COMPLETE!");
+    }
+
+    private boolean doesAnyPartNeedsFixing () {
+        for (PhysicalState ps : rover.getPhysicalStates()) {
+            if (ps.getCondition() <= 10) return true;
+        }
+        return false;
+    }
+
+    private double timeToRepair() {
+        if (rover.getPhysicalStates().isEmpty()) return 0;
+
+        double totalTime = 0.0;
+
+        for (PhysicalState ps : rover.getPhysicalStates()) {
+            int currentCondition = ps.getCondition();
+
+            if (currentCondition < 100) {
+                double conditionNeeded = 100.0 - currentCondition;
+                double timeForComponent = conditionNeeded / FIX_RATE;
+
+                totalTime += timeForComponent;
+            }
+        }
+        return totalTime;
+    }
+
+    private void decrementParts () throws IllegalArgumentException {
+        Random rand = new Random();
+        for (PhysicalState ps : rover.getPhysicalStates()) {
+            int decrement = rand.nextInt(10);
+
+            int newLevel = ps.getCondition() - decrement;
+            if (newLevel < 0) newLevel = 0;
+            else if (newLevel > 100) newLevel = 100;
+
+            ps.setCondition(newLevel);
+        }
+    }
     private void decrementBattery (double timeElapsed) throws IllegalArgumentException {
-        if (timeElapsed < 0) throw new IllegalArgumentException();
+        if (timeElapsed < 0) return;
 
         double batteryDecrement;
         if (rover.getState() == Rover.MissionState.ON_THE_WAY) batteryDecrement = timeElapsed * CONSUMPTION_WALKING / 1000 ;
         else batteryDecrement = timeElapsed * getBatteryRate(currentMission.getMissionType()) / 1000 ;
 
         double newBatteryLevel = rover.getBatteryLevel() - batteryDecrement;
-        if (newBatteryLevel < 0 || newBatteryLevel > 100) throw new IllegalArgumentException();
+        if (newBatteryLevel < 0) newBatteryLevel = 0;
+        else if (newBatteryLevel > 100) newBatteryLevel = 100;
 
         rover.setBatteryLevel(newBatteryLevel);
         //System.out.printf("[BATTERY USAGE] Battery Telemetry: -%.2f%%. Current Level: %.2f\n", batteryDecrement, rover.getBatteryLevel());
@@ -230,6 +322,7 @@ public class RoverMissions {
         double consumption = m.getMissionTime() * consumptionPerMission
                 + timeBetweenPlaces(rover.getPosition(), m.getAreaCoordinates()) * CONSUMPTION_WALKING * 2;
 
+        System.out.println("Estimated mission consumption: " + consumption);
         return (rover.getBatteryLevel() > consumption);
     }
 
@@ -249,7 +342,7 @@ public class RoverMissions {
     }
 
     private double timeToFullyCharge () {
-        return (100-this.rover.getBatteryLevel())/CHARGE_RATE; // 200 secs to fully charge
+        return (100-this.rover.getBatteryLevel()) / CHARGE_RATE; // 100 secs to fully charge
     }
 
     private double getBatteryRate(Mission.MissionType missionType) {
@@ -271,7 +364,10 @@ public class RoverMissions {
         this.currentMission = newMission;
         this.missionStartTime = System.currentTimeMillis();
 
-        scheduler.scheduleAtFixedRate(this::sendUpdate,
+        if (missionUpdateTask != null && !missionUpdateTask.isDone()) {
+            missionUpdateTask.cancel(false);
+        }
+        missionUpdateTask = scheduler.scheduleAtFixedRate(this::sendUpdate,
                 0, // initial delay
                 newMission.getUpdateTime(),
                 TimeUnit.SECONDS);
@@ -287,8 +383,8 @@ public class RoverMissions {
         long timeElapsed = currentTime - missionStartTime;
 
         int progressPercent = 0;
-        if (totalDuration > 0) progressPercent = (int) Math.min(100, Math.round((double) timeElapsed / totalDuration * 100));
-
+        if (totalDuration > 0)
+            progressPercent = (int) Math.min(100, Math.round((double) timeElapsed / totalDuration * 100));
 
         UpdateMission updateMission = new UpdateMission(
                 currM.getMissionId(),
@@ -303,7 +399,12 @@ public class RoverMissions {
         }
 
         if (progressPercent >= 100) {
-            scheduler.close();
+            if (missionUpdateTask != null) {
+                missionUpdateTask.cancel(false);
+            }
         }
+    }
+    public void cleanup() {
+        scheduler.shutdownNow();
     }
 }

@@ -1,8 +1,8 @@
 package Utils;
 
 public class Point3D {
-    public int x, y, z;
-    public Point3D(int x, int y, int z) {
+    public double x, y, z;
+    public Point3D(double x, double y, double z) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -15,7 +15,7 @@ public class Point3D {
     }
     @Override
     public String toString() {
-        return "(" + x + "," + y + "," + z + ")";
+        return String.format("(%.1f, %.1f, %.1f)", x, y, z);
     }
 
     public static Point3D findMiddlePoint(Point3D a, Point3D b, double distanceX) {
@@ -42,9 +42,9 @@ public class Point3D {
 
         // scale the unit vector and add it to A
         // P = A + (distanceX * u)
-        int px = (int) Math.round(a.x + (distanceX * ux));
-        int py = (int) Math.round(a.y + (distanceX * uy));
-        int pz = (int) Math.round(a.z + (distanceX * uz));
+        double px = a.x + (distanceX * ux);
+        double py = a.y + (distanceX * uy);
+        double pz = a.z + (distanceX * uz);
 
         return new Point3D(px, py, pz);
     }

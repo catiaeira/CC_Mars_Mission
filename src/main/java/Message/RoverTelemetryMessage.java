@@ -46,9 +46,9 @@ public class RoverTelemetryMessage implements MessageData{
             try (DataOutputStream out = new DataOutputStream(byteOut)) {
 
                 out.write(id);
-                out.write(position.x);
-                out.write(position.y);
-                out.write(position.z);
+                out.writeDouble(position.x);
+                out.writeDouble(position.y);
+                out.writeDouble(position.z);
                 out.write(state.ordinal());
 
                 out.writeDouble(batteryLevel);
@@ -99,12 +99,11 @@ public class RoverTelemetryMessage implements MessageData{
     public static RoverTelemetryMessage convertBytesToMessageData(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-
         int totalLength = Byte.toUnsignedInt(buffer.get());
         int id = Byte.toUnsignedInt(buffer.get());
-        int x = Byte.toUnsignedInt(buffer.get());
-        int y = Byte.toUnsignedInt(buffer.get());
-        int z = Byte.toUnsignedInt(buffer.get());
+        double x = buffer.getDouble();
+        double y = buffer.getDouble();
+        double z = buffer.getDouble();
         int stateOrdinal = Byte.toUnsignedInt(buffer.get());
         double batteryLevel = buffer.getDouble();
 
