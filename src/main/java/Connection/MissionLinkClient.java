@@ -77,8 +77,8 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         switch (msg.getMessageDataType()) {
             case ROVER_INIT:
                 RoverInitMessage message = (RoverInitMessage) msg.getMessageData();
-                rover.setId(message.id);
-                UDPPrint.logSuccess("RCV", msg, "ID Atribuído: " + message.id);
+                rover.setId(message.getId());
+                UDPPrint.logSuccess("RCV", msg, "ID Atribuído: " + message.getId());
                 break;
 
             case MISSION:

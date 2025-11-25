@@ -61,8 +61,7 @@ public class Rover {
             try {
                 // O argumento vem como String ("1"), temos de converter para int
                 // args[0] é o primeiro argumento da linha de comandos
-		String idLimpo = args[0].trim().replaceAll("[^0-9]", "");
-                roverId = Integer.parseInt(args[0].replaceAll("[^0-9]", ""));
+                roverId = Integer.parseInt(args[0].trim().replaceAll("[^0-9]", ""));
             } catch (NumberFormatException e) {
                 System.err.println("Erro: O ID do Rover deve ser um número inteiro.");
                 return;

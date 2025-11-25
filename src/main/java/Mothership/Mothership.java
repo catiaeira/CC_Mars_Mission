@@ -4,6 +4,7 @@ import Message.*;
 import Utils.Point3D;
 import Mission.Mission;
 import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,23 +14,33 @@ public class Mothership { // controller
     private int localSequenceNumber = 0;
 
     public void updateRoverInfoWithTelemetry(Message msg) {
-
         if (msg.getMessageDataType() != Message.MessageDataTypes.ROVER_TELEMETRY) return;
 
         RoverTelemetryMessage telemetry = (RoverTelemetryMessage) msg.getMessageData();
         int roverId = telemetry.id;
         RoverInfo roverInfo = this.rovers.get(roverId);
 
-        if (roverInfo == null) {
-            System.out.println("[Mothership] Novo Rover detetado via Telemetria: ID " + roverId);
-            // Ajusta os argumentos conforme o teu construtor de RoverInfo (3 ou 4 args)
-            roverInfo = new RoverInfo(roverId, null, 0);
-            this.rovers.put(roverId, roverInfo);
-        }
-
         roverInfo.updateLastTelemetryMessage(telemetry);
         roverInfo.updateLastActiveTimestamp(System.currentTimeMillis());
         System.out.println("[Mothership] Telemetria atualizada para Rover " + roverId);
+    }
+
+    public void storeRoverInfoConnection (Message msg, InetAddress ip, int port) {
+        if (msg.getMessageDataType() != Message.MessageDataTypes.ROVER_INIT) return;
+        RoverInitMessage roverInit = (RoverInitMessage) msg.getMessageData();
+        int roverId = roverInit.getId();
+        RoverInfo roverInfo = this.rovers.get(roverId);
+        if (roverInfo != null) {
+            System.out.println("[Mothership] Rover with that id already exists!");
+            return;
+        }
+        System.out.println("[Mothership] New rover initiating: ID " + roverId);
+        roverInfo = new RoverInfo(roverId, null, 0);
+        this.rovers.put(roverId, roverInfo);
+
+        roverInfo.setRoverConnection (ip, port);
+        roverInfo.updateLastActiveTimestamp(System.currentTimeMillis());
+        System.out.println("Stored the ip and port of Rover " + roverId);
     }
 
     public static void main(String[] args) {
@@ -60,19 +71,10 @@ public class Mothership { // controller
                 int idParaRegistar;
 
                 // Decidir ID (Manter o existente ou criar novo)
-                if (initMsg.id > 0) {
-                    idParaRegistar = initMsg.id;
+                if (initMsg.getId() > 0) {
+                    idParaRegistar = initMsg.getId();
                 } else {
                     idParaRegistar = rovers.size() + 1;
-                }
-
-                // Idempotência: Só cria se não existir
-                if (!rovers.containsKey(idParaRegistar)) {
-                    System.out.println("[Mothership] A registar NOVO Rover: " + idParaRegistar);
-                    RoverInfo rInfo = new RoverInfo(idParaRegistar, null, 0);
-                    rovers.put(idParaRegistar, rInfo);
-                } else {
-                    System.out.println("[Mothership] Rover " + idParaRegistar + " já existe. Reenviando confirmação.");
                 }
 
                 reply = new Message(

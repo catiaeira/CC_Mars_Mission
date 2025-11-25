@@ -51,19 +51,6 @@ public class RoverConnection {
         this.localSequenceNumber += (size > 0 ? size : 1);
         missionLinkClient.enqueueMessage(msg);
         System.out.println("[Rover] sent an init message (Seq " + seq + ").");
-
-        // 7. (Opcional) Bloquear até receber o ID da Nave
-        // Como o Sender garante a entrega, só precisamos de esperar que o Receiver processe a resposta.
-        /*
-        while (this.rover.getId() == -1) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        System.out.println("[Rover] ID atribuído e confirmado: " + this.rover.getId());
-        */
     }
 
     public void sendTelemetry() {

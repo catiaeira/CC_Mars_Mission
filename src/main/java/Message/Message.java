@@ -12,6 +12,7 @@ public class Message {
     private final int sequenceNumber;
     private final int messageId;
     private final int ackNumber; // <--- ESTE CAMPO É ESSENCIAL
+    private final boolean isFragmented;
     private final MessageDataTypes messageDataType;
 
     // --- PAYLOAD ---
@@ -36,21 +37,30 @@ public class Message {
     // --- CONSTRUTORES ---
 
     // 1. Construtor Simples (Sem ACK, usa -1 por defeito)
+    public Message(int sequenceNumber, MessageDataTypes messageDataType, boolean isFragmented, MessageData data) {
+        this(sequenceNumber, msgIds++, -1, messageDataType, isFragmented, data);
+    }
+
+    // unless specified, message is assumed to not be fragmented
     public Message(int sequenceNumber, MessageDataTypes messageDataType, MessageData data) {
-        this(sequenceNumber, msgIds++, -1, messageDataType, data);
+        this(sequenceNumber, msgIds++, -1, messageDataType, false, data);
     }
 
     // 2. Construtor com ACK Explícito (Para Piggybacking)
+    public Message(int sequenceNumber, int ackNumber, MessageDataTypes messageDataType, boolean isFragmented, MessageData data) {
+        this(sequenceNumber, msgIds++, ackNumber, messageDataType, isFragmented, data);
+    }
     public Message(int sequenceNumber, int ackNumber, MessageDataTypes messageDataType, MessageData data) {
-        this(sequenceNumber, msgIds++, ackNumber, messageDataType, data);
+        this(sequenceNumber, msgIds++, ackNumber, messageDataType, false, data);
     }
 
     // 3. Construtor Mestre (Usado na conversão de bytes)
-    public Message(int sequenceNumber, int messageId, int ackNumber, MessageDataTypes messageDataType, MessageData data) {
+    public Message(int sequenceNumber, int messageId, int ackNumber, MessageDataTypes messageDataType, boolean isFragmented, MessageData data) {
         this.sequenceNumber = sequenceNumber;
         this.messageId = messageId;
         this.ackNumber = ackNumber;
         this.messageDataType = messageDataType;
+        this.isFragmented = isFragmented;
         this.data = data;
     }
 
@@ -63,6 +73,7 @@ public class Message {
             out.write((byte) messageId);
             out.write((byte) ackNumber); // <--- Escrever o ACK no cabeçalho
             out.write((byte) messageDataType.ordinal());
+            out.write(isFragmented ? 1 : 0);
 
             byte[] dataBytes = data.convertMessageDataToBytes();
             for (byte b : dataBytes) { // O teu loop original (pode ser otimizado com out.write(bytes), mas mantive igual)
@@ -94,6 +105,8 @@ public class Message {
         int ackNumber = buffer.get(); // <--- Ler o ACK (como byte assinado para permitir -1)
 
         int messageDataTypeOrdinal = Byte.toUnsignedInt(buffer.get());
+        boolean isFragmented = Byte.toUnsignedInt(buffer.get()) != 0;
+
         MessageDataTypes dataType = MessageDataTypes.values()[messageDataTypeOrdinal];
 
         // Calcular tamanho dos dados restantes
@@ -135,7 +148,7 @@ public class Message {
                 // Opcional: tratar caso desconhecido ou deixar mData como null
                 break;
         }
-        return new Message(sequenceNumber, messageId, ackNumber, dataType, mData);
+        return new Message(sequenceNumber, messageId, ackNumber, dataType, isFragmented, mData);
     }
 
     @Override

@@ -62,6 +62,11 @@ public class RoverInfo {
         this.lastTelemetryMessage = lastTelemetryMessage;
     }
 
+    public void setRoverConnection (InetAddress ip, int port) {
+        this.roverIpAddress = ip;
+        this.missionLinkUdpPort = port;
+    }
+
     public int getRoverId() {
         return roverId;
     }
