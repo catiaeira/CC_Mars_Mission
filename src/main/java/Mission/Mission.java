@@ -2,6 +2,8 @@ package Mission;
 
 import Utils.Point3D;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public class Mission implements Comparable<Mission> {
     private final int missionId;
     private final int roverId;
@@ -12,6 +14,7 @@ public class Mission implements Comparable<Mission> {
     private final int updateTime;
     private final boolean isUrgent;
     private boolean isCompleted = false;
+    private final ReentrantLock lock = new ReentrantLock();
 
     // updates: the mission must define how and how often the rover reports back to the mothership
 
@@ -24,8 +27,10 @@ public class Mission implements Comparable<Mission> {
     private static int counter = 1;
 
     public Mission(int roverId, MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime, boolean isUrgent) {
+        lock.lock();
         this.missionId = counter;
         counter++;
+        lock.unlock();
         this.roverId = roverId;
         this.missionType = missionType;
         this.areaCoordinates = areaCoordinates;
@@ -35,8 +40,10 @@ public class Mission implements Comparable<Mission> {
         this.isUrgent = isUrgent;
     }
     public Mission(int roverId, MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime, boolean isUrgent, boolean isCompleted) {
+        lock.lock();
         this.missionId = counter;
         counter++;
+        lock.unlock();
         this.roverId = roverId;
         this.missionType = missionType;
         this.areaCoordinates = areaCoordinates;
@@ -50,7 +57,7 @@ public class Mission implements Comparable<Mission> {
     public int getMissionId() {
         return missionId;
     }
-    public int  getRoverId() {
+    public int getRoverId() {
         return roverId;
     }
     public MissionType getMissionType() {
