@@ -21,7 +21,7 @@ public class MothershipMissions {
         Mission.MissionType type = Mission.MissionType.values()[rand.nextInt(Mission.MissionType.values().length)];
         Point3D coords = new Point3D(rand.nextInt(50), rand.nextInt(50), rand.nextInt(50));
         int area =  rand.nextInt(1,50);
-        int time = rand.nextInt(10,120);            // 2 mins max
+        int time = rand.nextInt(10,60);            // 1 min max
         int updateTime = rand.nextInt(1,time/3);    // 3 updates per mission min
         boolean isUrgent = rand.nextInt(100) < 10;        // 10% chance of being urgent
 

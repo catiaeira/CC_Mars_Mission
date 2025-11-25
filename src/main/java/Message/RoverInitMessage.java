@@ -1,7 +1,7 @@
 package Message;
 
 public class RoverInitMessage implements MessageData{
-    public int id = -1;
+    private int id = -1;
 
     public RoverInitMessage () {}
 
@@ -15,7 +15,7 @@ public class RoverInitMessage implements MessageData{
         bytes[1] = (byte) id;
         return bytes;
     }
-
+    public int getId() {return id;}
     public static RoverInitMessage convertBytesToMessageData(byte[] bytes) {
         int id = bytes[1];
         if (id == -1) return new RoverInitMessage();

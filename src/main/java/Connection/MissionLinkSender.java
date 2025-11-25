@@ -2,7 +2,7 @@ package Connection;
 
 import Message.Message;
 import Message.Package;
-
+import Utils.UDPPrint;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -13,29 +13,96 @@ public class MissionLinkSender implements Runnable {
     private final DatagramSocket socket;
     private final BlockingQueue<Package> outgoingQueue;
 
+    // Variáveis partilhadas para controlo
+    private static final int MAX_TIMEOUTS = 10;
+    private static final int TIMEOUT_MS = 4000; // 4 segundos para retransmitir
+    private final Object lock = new Object(); // Para sincronizar
+    private volatile int waitingForAckNumber = -1; // Qual o ACK que estamos à espera?
+    private volatile boolean ackReceived = false; // O ACK chegou?
+
     public MissionLinkSender(DatagramSocket socket, BlockingQueue<Package> outgoingQueue) {
         this.socket = socket;
         this.outgoingQueue = outgoingQueue;
+    }
+
+    // Método chamado pelo Receiver quando chega um ACK
+    public void confirmAck(int ackNumber) {
+        synchronized (lock) {
+            // Se o ACK confirma o que estamos à espera (ou é maior/mais recente)
+            if (ackNumber >= waitingForAckNumber) {
+                ackReceived = true;
+                lock.notify(); // Acorda a thread Sender!
+            }
+        }
     }
 
     @Override
     public void run() {
         while (true) {
             try {
-                Package packageToSend = outgoingQueue.take(); // blocks here
+                // 1. Pegar na próxima mensagem da fila
+                Package pkg = outgoingQueue.take();
+                Message msg = pkg.getMessage();
 
-                InetAddress ip = InetAddress.getByName(packageToSend.getToIp());
-                int port = packageToSend.getToPort();
-                Message message = packageToSend.getMessage();
+                InetAddress ipAddress = InetAddress.getByName(pkg.getToIp());
+                int port = pkg.getToPort();
 
-                byte[] msg = message.convertMessageToBytes();
-                DatagramPacket messagePacket = new DatagramPacket(msg, msg.length, ip, port);
-                socket.send(messagePacket);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (IOException e) {
-                System.err.println("[ML-S] Failed to send message: " + e.getMessage());
+                // Calcular ACK Esperado
+                int payloadSize = 0;
+                try {
+                    if (msg.getMessageData() != null) {
+                        payloadSize = msg.getMessageData().convertMessageDataToBytes().length;
+                    }
+                } catch (Exception e) { payloadSize = 0; }
+
+                int expectedAck = msg.getSequenceNumber() + (payloadSize > 0 ? payloadSize : 1);
+
+                synchronized (lock) {
+                    waitingForAckNumber = expectedAck;
+                    ackReceived = false;
+                }
+
+                boolean sentSuccessfully = false;
+                int attempts = 0;
+
+                while (!sentSuccessfully) {
+                    attempts++;
+
+                    // 2. ENVIAR (ou Reenviar)
+                    byte[] data = msg.convertMessageToBytes();
+                    DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, port);
+                    socket.send(packet);
+
+                    // --- LOGGING ESTILO WIRESHARK ---
+                    if (attempts > 1) {
+                        // Retransmissão (Fundo Vermelho)
+                        UDPPrint.log("SND", msg, "Retransmissão #" + attempts + " -> " + pkg.getToIp(), true);
+                        System.out.println(msg);
+                    } else {
+                        // Envio Normal (Ciano)
+                        UDPPrint.log("SND", msg, "Para: " + pkg.getToIp() + " (Espera ACK " + expectedAck + ")", false);
+                    }
+                    // --------------------------------
+
+                    // 3. ESPERAR PELO ACK (com Timeout)
+                    synchronized (lock) {
+                        if (!ackReceived) {
+                            lock.wait(TIMEOUT_MS);
+                        }
+                        if (ackReceived) {
+                            // Sucesso! (Opcional: log verde discreto)
+                            // System.out.println(WiresharkLogger.GREEN + "   └── [ML-SND] Confirmado!" + WiresharkLogger.RESET);
+                            sentSuccessfully = true;
+                        } else { // Timeout! O loop vai repetir e imprimir a vermelho na próxima volta
+                            if (attempts > MAX_TIMEOUTS) {
+                                UDPPrint.log("SND", msg, "Max number of retransmissions hit, dropping message...", true);
+                                sentSuccessfully = true;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }

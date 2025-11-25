@@ -42,7 +42,7 @@ public class MissionLinkServer implements Runnable, MissionLinkGeneric { //UDP
         switch (msg.getMessageDataType()) {
             case ROVER_INIT:
                 // the mothership will store the ip/port from the packet
-                mothership.assignRoverID(packet.getAddress(), packet.getPort());
+                mothership.storeRoverInfoConnection(msg, packet.getAddress(), packet.getPort());
                 break;
             case REQUEST_MISSION:
                mothership.mothershipMissions.createRandomMissionIfEmpty();

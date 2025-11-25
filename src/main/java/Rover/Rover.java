@@ -30,8 +30,8 @@ public class Rover {
         ON_THE_WAY
     }
 
-    public Rover(Point3D position, List<PhysicalState> physicalStates, int inventorySpace) {
-        this.id = -1;
+    public Rover(int id, Point3D position, List<PhysicalState> physicalStates, int inventorySpace) {
+        this.id = id;
         this.position = position;
         this.base = new Base(position);
         this.physicalStates = new ArrayList<>();
@@ -71,14 +71,27 @@ public class Rover {
 
     public static void main(String[] args) throws InterruptedException {
         ArrayList<PhysicalState> physicalStates = new ArrayList<>();
-        physicalStates.add(new PhysicalState("wheels", 15));
-        physicalStates.add(new PhysicalState("camera", 10));
+        physicalStates.add(new PhysicalState("wheels", 100));
+        physicalStates.add(new PhysicalState("camera", 80));
 
-        Rover rover = new Rover( new Point3D(0,0,0), physicalStates, 5);
+        int roverId = 1; // Valor default caso te esqueças de passar argumento
+
+        if (args.length > 0) {
+            try {
+                // O argumento vem como String ("1"), temos de converter para int
+                // args[0] é o primeiro argumento da linha de comandos
+                roverId = Integer.parseInt(args[0].trim().replaceAll("[^0-9]", ""));
+            } catch (NumberFormatException e) {
+                System.err.println("Erro: O ID do Rover deve ser um número inteiro.");
+                return;
+            }
+        } else {
+            System.out.println("Aviso: Nenhum ID fornecido. A usar ID default: 1");
+        }
+
+        Rover rover = new Rover(roverId, new Point3D(0,0,0), physicalStates, 5);
         rover.roverConnection.connectServer();
         rover.roverConnection.sendInit();
-        Thread.sleep(1000); // TEMPORARY
-
         rover.roverMissions.run();
         rover.roverConnection.sendTelemetry();
     }
@@ -87,10 +100,9 @@ public class Rover {
         switch (type) {
             case ROVER_INIT:
                 RoverInitMessage roverMsg = (RoverInitMessage) msg;
-                setId(roverMsg.id);
+                setId(roverMsg.getId());
                 break;
             case MISSION:
-                System.out.println("received mission");
                 MissionMessage missionMsg = (MissionMessage) msg;
                 this.roverMissions.addMission(missionMsg.getMission());
                 break;

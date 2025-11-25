@@ -1,9 +1,11 @@
 package Connection;
 
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import Message.Message;
-
-import java.io.*;
-import java.net.*;
+import Message.RoverTelemetryMessage; // Import explícito para evitar erros
 import Mothership.Mothership;
 
 public class TelemetryStreamServer implements Runnable {
@@ -30,22 +32,32 @@ public class TelemetryStreamServer implements Runnable {
     }
 
     private void handleRover(Socket socket) {
-        try(DataInputStream in = new DataInputStream(socket.getInputStream())) {
+        int currentRoverId = -1;
+
+        try (DataInputStream in = new DataInputStream(socket.getInputStream())) {
             while (true) {
                 int length = in.readInt();
                 if (length > 0) {
                     byte[] messageBytes = new byte[length];
-
                     in.readFully(messageBytes);
 
                     Message receivedMsg = Message.convertBytesToMessage(messageBytes);
-                    System.out.println("[TS] Received telemetry message: " + receivedMsg.toString());
                     mothership.updateRoverInfoWithTelemetry(receivedMsg);
+
+                    if (receivedMsg.getMessageDataType() == Message.MessageDataTypes.ROVER_TELEMETRY) {
+                        // CORREÇÃO: Usa apenas o nome da classe
+                        RoverTelemetryMessage tel = (RoverTelemetryMessage) receivedMsg.getMessageData();
+                        currentRoverId = tel.id;
+                    }
                 }
             }
         } catch (IOException e) {
-            System.out.println("[TS] Rover disconnected.");
+            // Apenas o essencial
+            if (currentRoverId != -1) {
+                mothership.removeRover(currentRoverId);
+            } else {
+                // Opcional: System.out.println("[TS] Ligação anónima caiu.");
+            }
         }
     }
 }
-
