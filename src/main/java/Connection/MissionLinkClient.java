@@ -42,8 +42,6 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         try {
             socket = new DatagramSocket();
 
-            // 2. ALTERAÇÃO: Instanciar o Sender para a variável da classe antes de iniciar a Thread
-            // Isto permite que o Receiver consiga "falar" com ele mais tarde.
             this.sender = new MissionLinkSender(socket, this.outgoingQueue);
 
             Thread senderThread = new Thread(this.sender);
@@ -67,6 +65,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         // 2. FILTRO DE DUPLICADOS (VERMELHO)
         if (msg.getSequenceNumber() <= lastProcessedSeq) {
             UDPPrint.logError("RCV", msg, "Já processado. Ignorado.");
+            System.out.println(msg);
             return;
         }
 
@@ -77,14 +76,11 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         switch (msg.getMessageDataType()) {
             case ROVER_INIT:
                 RoverInitMessage message = (RoverInitMessage) msg.getMessageData();
-                rover.setId(message.getId());
                 UDPPrint.logSuccess("RCV", msg, "ID Atribuído: " + message.getId());
                 break;
 
             case MISSION:
-                // Aqui é o momento "glória" - recebemos a missão!
                 UDPPrint.logSuccess("RCV", msg, "NOVA MISSÃO ACEITE E GUARDADA!");
-                // rover.setMission(...)
                 break;
 
             default:
@@ -92,6 +88,8 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
                 // WiresharkLogger.log("RCV", msg, "ACK/Outro recebido", false);
                 break;
         }
+        System.out.println("[ML] Received: " + msg.toString());
+        rover.processMessage(msg.getMessageDataType(), msg.getMessageData());
     }
 
     @Override
@@ -109,9 +107,9 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
             e.printStackTrace();
         }
     }
-
     @Override
     public Message generateReply(Message msg) {
         return this.rover.generateReply(msg);
     }
+
 }

@@ -9,14 +9,13 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.concurrent.BlockingQueue;
 
-
-
 public class MissionLinkSender implements Runnable {
     private final DatagramSocket socket;
     private final BlockingQueue<Package> outgoingQueue;
 
     // Variáveis partilhadas para controlo
-    private static final int TIMEOUT_MS = 4000; // 2 segundos para retransmitir
+    private static final int MAX_TIMEOUTS = 10;
+    private static final int TIMEOUT_MS = 4000; // 4 segundos para retransmitir
     private final Object lock = new Object(); // Para sincronizar
     private volatile int waitingForAckNumber = -1; // Qual o ACK que estamos à espera?
     private volatile boolean ackReceived = false; // O ACK chegou?
@@ -45,7 +44,6 @@ public class MissionLinkSender implements Runnable {
                 Package pkg = outgoingQueue.take();
                 Message msg = pkg.getMessage();
 
-                // Resolver IP uma única vez
                 InetAddress ipAddress = InetAddress.getByName(pkg.getToIp());
                 int port = pkg.getToPort();
 
@@ -79,6 +77,7 @@ public class MissionLinkSender implements Runnable {
                     if (attempts > 1) {
                         // Retransmissão (Fundo Vermelho)
                         UDPPrint.log("SND", msg, "Retransmissão #" + attempts + " -> " + pkg.getToIp(), true);
+                        System.out.println(msg);
                     } else {
                         // Envio Normal (Ciano)
                         UDPPrint.log("SND", msg, "Para: " + pkg.getToIp() + " (Espera ACK " + expectedAck + ")", false);
@@ -90,17 +89,18 @@ public class MissionLinkSender implements Runnable {
                         if (!ackReceived) {
                             lock.wait(TIMEOUT_MS);
                         }
-
                         if (ackReceived) {
                             // Sucesso! (Opcional: log verde discreto)
                             // System.out.println(WiresharkLogger.GREEN + "   └── [ML-SND] Confirmado!" + WiresharkLogger.RESET);
                             sentSuccessfully = true;
-                        } else {
-                            // Timeout! O loop vai repetir e imprimir a vermelho na próxima volta
+                        } else { // Timeout! O loop vai repetir e imprimir a vermelho na próxima volta
+                            if (attempts > MAX_TIMEOUTS) {
+                                UDPPrint.log("SND", msg, "Max number of retransmissions hit, dropping message...", true);
+                                sentSuccessfully = true;
+                            }
                         }
                     }
                 }
-
             } catch (Exception e) {
                 e.printStackTrace();
             }
