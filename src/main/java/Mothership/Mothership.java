@@ -4,6 +4,8 @@ import Message.*;
 
 import Mission.Mission;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Collection;
 import Message.*;
 import Message.MissionMessage;
 import java.util.HashMap;
@@ -19,7 +21,7 @@ public class Mothership { // controller
         if (msg.getMessageDataType() != Message.MessageDataTypes.ROVER_TELEMETRY) return;
 
         RoverTelemetryMessage telemetry = (RoverTelemetryMessage) msg.getMessageData();
-        int roverId = telemetry.id;
+        int roverId = telemetry.getId();
         RoverInfo roverInfo = this.rovers.get(roverId);
 
         roverInfo.updateLastTelemetryMessage(telemetry);
@@ -154,4 +156,23 @@ public class Mothership { // controller
         }
     }
 
+    public Collection<RoverInfo> getRoverInfo() {
+        return this.rovers.values();
+    }
+
+//    public Collection<RoverInfo> getActiveMissions() {
+//        return mothershipMissions.getActiveMissions();
+//    }
+//
+//    public Collection<RoverInfo> getPastMissions() {
+//        return mothershipMissions.getActiveMissions();
+//    }
+
+    public ArrayList<RoverTelemetryMessage> getLastTelemetry() {
+        ArrayList<RoverTelemetryMessage> res = new ArrayList<RoverTelemetryMessage>();
+        for (RoverInfo i : this.rovers.values()) {
+            res.add(i.getLastTelemetryMessage());
+        }
+        return res;
+    }
 }
