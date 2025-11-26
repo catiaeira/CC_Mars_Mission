@@ -11,8 +11,12 @@ public class MissionMessage implements MessageData{
     private final int areaRadius;
     private final int missionTime;
     private final int updateTime;
+    private final boolean isUrgent;
+    private final boolean isCompleted;
 
-    public MissionMessage(int missionId, int roverId, Mission.MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime) {
+    public MissionMessage(int missionId, int roverId, Mission.MissionType missionType,
+                          Point3D areaCoordinates, int areaRadius, int missionTime,
+                          int updateTime, boolean isUrgent, boolean isCompleted) {
         this.missionId = missionId;
         this.roverId = roverId;
         this.missionType = missionType;
@@ -20,6 +24,8 @@ public class MissionMessage implements MessageData{
         this.areaRadius = areaRadius;
         this.missionTime = missionTime;
         this.updateTime = updateTime;
+        this.isUrgent =  isUrgent;
+        this.isCompleted = isCompleted;
     }
     public MissionMessage (Mission mission) {
         this.missionId = mission.getMissionId();
@@ -29,12 +35,46 @@ public class MissionMessage implements MessageData{
         this.areaRadius= mission.getAreaRadius();
         this.missionTime = mission.getMissionTime();
         this.updateTime = mission.getUpdateTime();
+        this.isUrgent = mission.isUrgent();
+        this.isCompleted = mission.isCompleted();
+    }
+
+    public Mission getMission() {
+        return new Mission (roverId, missionType, areaCoordinates, areaRadius, missionTime, updateTime, isUrgent, isCompleted);
+    }
+    public int getMissionId() {
+        return missionId;
+    }
+    public int  getRoverId() {
+        return roverId;
+    }
+    public Mission.MissionType getMissionType() {
+        return missionType;
+    }
+    public Point3D getAreaCoordinates() {
+        return areaCoordinates;
+    }
+    public int getAreaRadius() {
+        return areaRadius;
+    }
+    public int getMissionTime() {
+        return missionTime;
+    }
+    public int getUpdateTime() {
+        return updateTime;
+    }
+    public boolean isUrgent() {
+        return isUrgent;
+    }
+    public boolean isCompleted() {
+        return this.isCompleted;
     }
 
     @Override
     public byte[] convertMessageDataToBytes() {
-        byte[] bytes  = new byte[10];
-        bytes[0] = (byte) 9;
+        int num_vars = 11;
+        byte[] bytes  = new byte[num_vars+1];
+        bytes[0] = (byte) num_vars;
         bytes[1] = (byte) missionId;
         bytes[2] = (byte) roverId;
         bytes[3] = (byte) this.missionType.ordinal();
@@ -44,6 +84,8 @@ public class MissionMessage implements MessageData{
         bytes[7] = (byte) this.areaRadius;
         bytes[8] = (byte) this.missionTime;
         bytes[9] = (byte) this.updateTime;
+        bytes[10] = (byte) (this.isUrgent ? 1 : 0);
+        bytes[11] = (byte) (this.isCompleted ? 1 : 0);
 
         return bytes;
     }
@@ -59,8 +101,10 @@ public class MissionMessage implements MessageData{
         int areaRadius = bytes[7];
         int missionTime = bytes[8];
         int updateTime = bytes[9];
+        boolean isUrgent = bytes[10] == 1;
+        boolean isCompleted = bytes[11] == 1;
 
-        return new MissionMessage(missionId, roverId, missionType, coordinates, areaRadius, missionTime, updateTime);
+        return new MissionMessage(missionId, roverId, missionType, coordinates, areaRadius, missionTime, updateTime, isUrgent, isCompleted);
     }
 
     @Override
@@ -73,6 +117,8 @@ public class MissionMessage implements MessageData{
                 ", areaRadius = " + areaRadius +
                 ", missionTime = " + missionTime +
                 ", updateTime = " + updateTime +
+                ", isUrgent = " + isUrgent +
+                ", isCompleted = " + isCompleted +
                 '}';
     }
 }

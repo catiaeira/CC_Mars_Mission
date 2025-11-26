@@ -1,6 +1,7 @@
 package Connection;
 
 import Message.Message;
+import Message.UpdateMission;
 import Message.Package;
 import Mothership.Mothership;
 
@@ -45,8 +46,11 @@ public class MissionLinkServer implements Runnable, MissionLinkGeneric { //UDP
                 mothership.storeRoverInfoConnection(msg, packet.getAddress(), packet.getPort());
                 break;
             case REQUEST_MISSION:
-                // create a new mission...
+                mothership.mothershipMissions.createRandomMissionIfEmpty();
                 break;
+            case MISSION_UPDATE:
+                UpdateMission updateMissionMsg = (UpdateMission) msg.getMessageData();
+                mothership.mothershipMissions.processMissionUpdate(updateMissionMsg);
             default:
                 break;
         }
@@ -61,7 +65,7 @@ public class MissionLinkServer implements Runnable, MissionLinkGeneric { //UDP
                     replyBytes, replyBytes.length, requestPacket.getAddress(), requestPacket.getPort());
 
             socket.send(responsePacket);
-            System.out.println("[ML] Sent reply to Rover: Message ID = " + reply.getMessageId());
+            System.out.println("[ML] Sent reply to Rover: ID = " + reply.getMessageId());
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -3,13 +3,16 @@ package Rover;
 import java.nio.charset.StandardCharsets;
 
 public class PhysicalState {
-    String partName; // eg camera
-    int condition; // 30 (percent), depletes with time
+    private String partName; // eg camera
+    private int condition; // 30 (percent), depletes with time
 
     public PhysicalState (String partName, int condition) {
         this.partName = partName;
         this.condition = condition;
     }
+    public String getName() {return this.partName;}
+    public int getCondition() {return this.condition;}
+    public void setCondition(int newCondition) {this.condition = newCondition;}
 
     public byte[] toByteArray () {
         byte[] nameBytes = partName.getBytes(StandardCharsets.UTF_8);
@@ -30,6 +33,6 @@ public class PhysicalState {
     }
     @Override
     public String toString () {
-        return partName + ": " + condition + "%";
+        return partName.toUpperCase() + ": " + condition + ""%;
     }
 }

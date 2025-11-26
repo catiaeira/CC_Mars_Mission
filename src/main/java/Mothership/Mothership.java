@@ -1,17 +1,20 @@
 package Mothership;
 
 import Message.*;
-import Utils.Point3D;
+
 import Mission.Mission;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
+import Message.*;
+import Message.MissionMessage;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Mothership { // controller
     // Mapa para guardar os Rovers (evita IndexOutOfBounds)
-    private Map<Integer, RoverInfo> rovers = new HashMap<>();
+    private final Map<Integer, RoverInfo> rovers = new HashMap<>();
+    public MothershipMissions mothershipMissions;
     private int localSequenceNumber = 0;
 
     public void updateRoverInfoWithTelemetry(Message msg) {
@@ -48,6 +51,7 @@ public class Mothership { // controller
         Mothership mothership = new Mothership();
         MothershipConnection connection = new MothershipConnection(mothership);
         connection.startServer();
+        mothership.mothershipMissions = new MothershipMissions();
     }
 
     public Message generateReply(Message receivedMsg) {
@@ -112,26 +116,24 @@ public class Mothership { // controller
                 }
 
                 System.out.println("[Mothership] A criar Nova Missão para Rover " + req.getIdRover());
-                Mission novaMissao = new Mission(
-                        req.getIdRover(), // Usa o ID correto do Rover
-                        Mission.MissionType.EXPLORE,
-                        new Point3D(50,50,0),
-                        100, 600, 60
-                );
+                Mission mission = this.mothershipMissions.getMission();
+                if (mission == null) {
+                    System.out.println("mission empty"); //shouldn't happen
+                    break;
+                }
+                System.out.println("mission " + mission.getMissionId());
+                mothershipMissions.startMission(mission);
 
-                reply = new Message(
-                        this.localSequenceNumber++,
-                        ackNum,
+                reply = new Message(receivedMsg.getSequenceNumber()+1,
+                        receivedMsg.getMessageId(),
                         Message.MessageDataTypes.MISSION,
-                        new MissionMessage(novaMissao)
-                );
+                        new MissionMessage(mission));
 
                 // C. GUARDAR NA CACHE (Para futuras retransmissões)
                 if (rInfo != null) {
                     rInfo.setLastSentMessage(reply);
                 }
                 break;
-
             default:
                 break;
         }
@@ -145,7 +147,6 @@ public class Mothership { // controller
                     new ACKMessage(receivedMsg.getSequenceNumber())
             );
         }
-
         return reply;
     }
     public void removeRover(int roverId) {
