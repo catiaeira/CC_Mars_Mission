@@ -36,7 +36,7 @@ public class RoverMissions {
      */
     final long   LOOP_INTERVAL = 1000; // update every second
     final double CHARGE_RATE = 1; // per second
-    final int FIX_RATE = 5;
+    final int    FIX_RATE = 5;
     final double SPEED = 1; // per second
     final double CONSUMPTION_WALKING = 0.1; // per sec
     final double CONSUMPTION_COLLECTING_ROCKS = 1;
@@ -111,6 +111,7 @@ public class RoverMissions {
 
         if (!willBatterySurvive && this.rover.getBatteryLevel() == 100) {
             System.out.println("Can't do mission! Discarding");
+            connection.discardMission(currentMission, rover.getId());
             this.currentMission = null;
             return System.currentTimeMillis();
         }

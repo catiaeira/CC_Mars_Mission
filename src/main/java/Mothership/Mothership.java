@@ -115,7 +115,12 @@ public class Mothership { // controller
 
                 System.out.println("[Mothership] A criar Nova Missão para Rover " + req.getIdRover());
                 Mission mission = this.mothershipMissions.getMission();
-                if (mission == null) System.out.println("mission empty"); //shouldn't happen
+                if (mission == null) {
+                    System.out.println("mission empty"); //shouldn't happen
+                    break;
+                }
+                System.out.println("mission " + mission.getMissionId());
+                mothershipMissions.startMission(mission);
 
                 reply = new Message(receivedMsg.getSequenceNumber()+1,
                         receivedMsg.getMessageId(),

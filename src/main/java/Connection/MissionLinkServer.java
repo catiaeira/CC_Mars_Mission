@@ -1,6 +1,7 @@
 package Connection;
 
 import Message.Message;
+import Message.UpdateMission;
 import Message.Package;
 import Mothership.Mothership;
 
@@ -45,8 +46,11 @@ public class MissionLinkServer implements Runnable, MissionLinkGeneric { //UDP
                 mothership.storeRoverInfoConnection(msg, packet.getAddress(), packet.getPort());
                 break;
             case REQUEST_MISSION:
-               mothership.mothershipMissions.createRandomMissionIfEmpty();
+                mothership.mothershipMissions.createRandomMissionIfEmpty();
                 break;
+            case MISSION_UPDATE:
+                UpdateMission updateMissionMsg = (UpdateMission) msg.getMessageData();
+                mothership.mothershipMissions.processMissionUpdate(updateMissionMsg);
             default:
                 break;
         }
