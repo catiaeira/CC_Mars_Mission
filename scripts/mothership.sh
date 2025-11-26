@@ -1,4 +1,12 @@
-#open a mothership terminal and run ./mothership.sh
+# Usage:
+# ./mothership.sh
+# ./mothership.sh sf
 
-cd /home/core/CC/ || exit #change to proper final path name
-java -cp out/ Mothership.Mothership
+if [ "$1" = "sf" ]
+then
+  cd /media/sf_CC/ || exit #path to repo as a shared folder (sf)
+else
+  cd /home/core/CC/ || exit
+fi
+
+java -cp target/classes/ Mothership.Mothership
