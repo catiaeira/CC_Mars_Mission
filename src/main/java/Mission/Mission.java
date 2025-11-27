@@ -99,7 +99,7 @@ public class Mission implements Comparable<Mission> {
         String SEPARATOR_LINE = "+" + "-".repeat(WIDTH - 2) + "+\n";
 
         String mission = String.format("| Mission %d:%-" + (WIDTH - 13 - ((int) Math.log10(Math.abs(this.missionId)) + 1)) + "s |\n", this.missionId, "");
-        String rover = String.format("| Rover -> %d%-" + (WIDTH - 13 - ((int) Math.log10(Math.abs(this.roverId)) + 1)) + "s |\n", this.roverId, "");
+        String rover = String.format("| Rover -> %d%-" + (WIDTH - 13 - String.valueOf(this.roverId).length()) + "s |\n", this.roverId, "");
         String mtype = String.format("| Mission Type -> %-" + (WIDTH - 20) + "s |\n", this.missionType.toString());
         String coords = String.format("| Coordinates -> %-" + (WIDTH - 19) + "s |\n", this.areaCoordinates.toString());
         String radius = String.format("| Radius -> %d%-" + (WIDTH - 14 - ((int) Math.log10(Math.abs(this.areaRadius)) + 1)) + "s |\n", this.areaRadius, "");

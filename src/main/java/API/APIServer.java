@@ -35,6 +35,7 @@ public class APIServer implements Runnable {
             server.createContext("/rovers", this::handleRoverInfo);
             server.createContext("/missions/active", this::handleActiveMissions);
             server.createContext("/missions/past", this::handlePastMissions);
+            server.createContext("/missions/future", this::handleFutureMissions);
             server.createContext("/telemetry", this::handleLastTelemetry);
 
             server.start();
@@ -111,6 +112,30 @@ public class APIServer implements Runnable {
 
             if(info.isEmpty()) {
                 textBuilder.append("No finished missions yet, check again later.\n");
+            } else {
+                for (Mission m : info) {
+                    textBuilder.append(m.toStringForAPI());
+                }
+            }
+
+            String text = textBuilder.toString();
+
+            sendText(ex, text);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ex.sendResponseHeaders(500, -1);
+            ex.close();
+        }
+    }
+
+    private void handleFutureMissions(HttpExchange ex) throws IOException {
+        try {
+            Collection<Mission> info = mothership.getFutureMissions();
+
+            StringBuilder textBuilder = new StringBuilder();
+
+            if(info.isEmpty()) {
+                textBuilder.append("No future missions queued, check again later.\n");
             } else {
                 for (Mission m : info) {
                     textBuilder.append(m.toStringForAPI());

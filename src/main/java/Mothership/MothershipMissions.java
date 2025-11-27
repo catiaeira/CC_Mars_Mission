@@ -23,6 +23,10 @@ public class MothershipMissions {
         return this.completedMissions.values();
     }
 
+    public Collection<Mission> getFutureMissions () {
+        return this.missionsToDo.stream().toList();
+    }
+
     public Mission getMission () {
         return missionsToDo.poll();
     }

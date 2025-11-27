@@ -168,6 +168,10 @@ public class Mothership { // controller
         return mothershipMissions.getPastMissions();
     }
 
+    public Collection<Mission> getFutureMissions() {
+        return mothershipMissions.getFutureMissions();
+    }
+
     public ArrayList<RoverTelemetryMessage> getLastTelemetry() {
         ArrayList<RoverTelemetryMessage> res = new ArrayList<RoverTelemetryMessage>();
         for (RoverInfo i : this.rovers.values()) {

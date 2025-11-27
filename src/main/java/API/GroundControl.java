@@ -30,7 +30,8 @@ public class GroundControl {
                 System.out.println("1. Check Active Rovers");
                 System.out.println("2. Check Active Missions");
                 System.out.println("3. Check Past Missions");
-                System.out.println("4. Check Last Telemetry Message");
+                System.out.println("4. Check Future Missions");
+                System.out.println("5. Check Last Telemetry Message");
                 System.out.println("0. Exit");
 
                 System.out.print("Enter option: ");
@@ -54,6 +55,11 @@ public class GroundControl {
                         optionMenu("/missions/past");
                         break;
                     case 4:
+                        System.out.println("\nFUTURE MISSIONS");
+                        System.out.println(getResponse("/missions/future"));
+                        optionMenu("/missions/future");
+                        break;
+                    case 5:
                         System.out.println("\nMOST RECENT TELEMETRY DATA");
                         System.out.println(getResponse("/telemetry"));
                         optionMenu("/telemetry");
