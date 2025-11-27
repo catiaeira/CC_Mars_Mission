@@ -94,17 +94,15 @@
                 case REQUEST_MISSION:
                     RequestMission req = (RequestMission) receivedMsg.getMessageData();
 
-                    // Lógica Pura de Negócio: Criar Nova Missão
-                    System.out.println("[Mothership] A criar Nova Missão para Rover " + req.getIdRover());
+                    System.out.println("[Mothership] Choosing a new mission for Rover " + req.getIdRover());
                     Mission mission = this.mothershipMissions.getMission();
 
                     if (mission == null) {
                         // Tratar erro ou enviar espera
                         break;
                     }
-
+                    mission.setRoverId(req.getIdRover());
                     mothershipMissions.startMission(mission);
-
                     // Nota: O sequenceNumber deve vir do servidor (localSequenceNumber++)
                     // O ackNum deve vir calculado corretamente (Seq + Len)
                     reply = new Message(

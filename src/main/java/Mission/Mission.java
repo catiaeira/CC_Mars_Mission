@@ -5,7 +5,7 @@ import Utils.Point3D;
 
 public class Mission implements Comparable<Mission> {
     private final int missionId;
-    private final int roverId;
+    private int roverId;
     private final MissionType missionType;
     private final Point3D areaCoordinates;
     private final int areaRadius;
@@ -49,6 +49,9 @@ public class Mission implements Comparable<Mission> {
     }
     public int getRoverId() {
         return roverId;
+    }
+    public void setRoverId(int id) {
+        this.roverId = id;
     }
     public MissionType getMissionType() {
         return missionType;

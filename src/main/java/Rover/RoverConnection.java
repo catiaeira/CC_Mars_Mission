@@ -85,7 +85,7 @@ public class RoverConnection {
                     Message msg = new Message(0, Message.MessageDataTypes.ROVER_TELEMETRY, new RoverTelemetryMessage(this.rover));
                     telemetryStreamClient.enqueueMessage(msg);
                     System.out.println("[Rover " + this.rover.getId() + "] sent a telemetry message.");
-                    Thread.sleep(120000); // every 2 minutes
+                    Thread.sleep(30000); // every 30 seconds
                 } catch (InterruptedException e) {
                     System.out.println("[Rover " + this.rover.getId() + "] Connection thread interrupted.");
                     running = false;

@@ -1,5 +1,7 @@
 package Mothership;
 
+import Message.MessageData;
+import Message.RequestMission;
 import Message.UpdateMission;
 import Mission.Mission;
 import Utils.Point3D;
@@ -37,7 +39,7 @@ public class MothershipMissions {
     public Mission createRandomMissionToRover (int idRover) {
         Random rand = new Random();
         Mission.MissionType type = Mission.MissionType.values()[rand.nextInt(Mission.MissionType.values().length)];
-        Point3D coords = new Point3D(rand.nextInt(50), rand.nextInt(50), rand.nextInt(50));
+        Point3D coords = new Point3D(rand.nextInt(30), rand.nextInt(30), rand.nextInt(30));
         int area =  rand.nextInt(1,30);
         int time = rand.nextInt(10,60);            // 1 min max
         int updateTime = rand.nextInt(1,time/3);    // 3 updates per mission min
@@ -79,6 +81,7 @@ public class MothershipMissions {
             System.out.println("[MOTHERSHIP MISSIONS] Mission " + msg.getIdMission() + " discarded!");
         }
         else if (completionLevel == 100) {
+            m.setCompleted();
             activeMissions.remove(missionId);
             completedMissions.put(missionId, m);
             System.out.println("[MOTHERSHIP MISSIONS] Mission " + msg.getIdMission() + " completed!");
