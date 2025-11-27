@@ -4,6 +4,7 @@ import Message.UpdateMission;
 import Mission.Mission;
 import Utils.Point3D;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.Random;
@@ -13,6 +14,18 @@ public class MothershipMissions {
     private final HashMap<Integer, Mission> activeMissions = new HashMap<>();
     private final HashMap<Integer, Mission> completedMissions = new HashMap<>();
     private final HashMap<Integer, Mission> discardedMissions = new HashMap<>();
+
+    public Collection<Mission> getActiveMissions () {
+        return this.activeMissions.values();
+    }
+
+    public Collection<Mission> getPastMissions () {
+        return this.completedMissions.values();
+    }
+
+    public Collection<Mission> getFutureMissions () {
+        return this.missionsToDo.stream().toList();
+    }
 
     public Mission getMission () {
         return missionsToDo.poll();

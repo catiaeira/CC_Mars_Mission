@@ -129,6 +129,7 @@
             }
             return reply;
         }
+      
         public void removeRover(int roverId) {
             if (rovers.containsKey(roverId)) {
                 rovers.remove(roverId);
@@ -140,24 +141,27 @@
             return this.rovers.values();
         }
 
-    //    public Collection<RoverInfo> getActiveMissions() {
-    //        return mothershipMissions.getActiveMissions();
-    //    }
-    //
-    //    public Collection<RoverInfo> getPastMissions() {
-    //        return mothershipMissions.getActiveMissions();
-    //    }
+        public Collection<Mission> getActiveMissions() {
+            return mothershipMissions.getActiveMissions();
+        }
+
+        public Collection<Mission> getPastMissions() {
+            return mothershipMissions.getPastMissions();
+        }
+
+        public Collection<Mission> getFutureMissions() {
+            return mothershipMissions.getFutureMissions();
+        }
 
         public ArrayList<RoverTelemetryMessage> getLastTelemetry() {
             ArrayList<RoverTelemetryMessage> res = new ArrayList<RoverTelemetryMessage>();
             for (RoverInfo i : this.rovers.values()) {
-                res.add(i.getLastTelemetryMessage());
+                RoverTelemetryMessage msg = i.getLastTelemetryMessage();
+                if (msg != null) res.add(msg);
             }
-            return res;
         }
 
         // retorna info de um rover especifico, por ID
-
         public RoverInfo getRoverById(int id) {
             return this.rovers.get(id);
         }
