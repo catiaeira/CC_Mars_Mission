@@ -159,6 +159,7 @@
                 RoverTelemetryMessage msg = i.getLastTelemetryMessage();
                 if (msg != null) res.add(msg);
             }
+            return res;
         }
 
         // retorna info de um rover especifico, por ID
