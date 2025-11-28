@@ -12,7 +12,6 @@
     import java.util.Map;
 
     public class Mothership { // controller
-        // Mapa para guardar os Rovers (evita IndexOutOfBounds)
         private final Map<Integer, RoverInfo> rovers = new HashMap<>();
         public MothershipMissions mothershipMissions;
         private int localSequenceNumber = 0;
@@ -39,12 +38,10 @@
                 return;
             }
             System.out.println("[Mothership] New rover initiating: ID " + roverId);
-            roverInfo = new RoverInfo(roverId, null, 0);
+            roverInfo = new RoverInfo(roverId, ip, port);
             this.rovers.put(roverId, roverInfo);
 
-            roverInfo.setRoverConnection (ip, port);
             roverInfo.updateLastActiveTimestamp(System.currentTimeMillis());
-            System.out.println("Stored the ip and port of Rover " + roverId);
         }
 
         public static void main(String[] args) {
@@ -75,12 +72,10 @@
                     RoverInitMessage initMsg = (RoverInitMessage) receivedMsg.getMessageData();
                     int idParaRegistar;
 
-                    // Decidir ID (Manter o existente ou criar novo)
-                    if (initMsg.getId() > 0) {
-                        idParaRegistar = initMsg.getId();
-                    } else {
-                        idParaRegistar = rovers.size() + 1;
-                    }
+                    int givenID = initMsg.getId();
+                    RoverInfo rover = this.rovers.get(givenID);
+                    if (rover.getLastTelemetryMessage() != null) idParaRegistar = -1;
+                    else idParaRegistar = givenID;
 
                     reply = new Message(
                             this.localSequenceNumber++,

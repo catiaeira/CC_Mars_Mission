@@ -9,16 +9,18 @@ import java.net.DatagramSocket;
 public class MissionLinkReceiver implements Runnable {
     private final DatagramSocket socket;
     private final MissionLinkGeneric ML;
+    private boolean running = true;
 
     public MissionLinkReceiver(DatagramSocket socket,  MissionLinkGeneric ML) {
         this.socket = socket;
         this.ML = ML;
     }
+    public void stop() {running = false;}
 
     @Override
     public void run() {
         byte[] buffer = new byte[1500];
-        while (true) {
+        while (running) {
             try {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 socket.receive(packet); // blocks here until a new packet is received
@@ -34,5 +36,6 @@ public class MissionLinkReceiver implements Runnable {
                 e.printStackTrace();
             }
         }
+        System.out.println("Closing ML receiver!");
     }
 }

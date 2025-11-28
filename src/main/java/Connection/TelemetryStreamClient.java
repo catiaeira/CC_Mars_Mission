@@ -12,6 +12,7 @@ public class TelemetryStreamClient implements Runnable {
     private final int serverPort;
     private final BlockingQueue<Message> outgoingQueue = new LinkedBlockingQueue<>();
     private volatile boolean running = true;
+    private Thread runningThread;
 
     public TelemetryStreamClient(String serverIP, int serverPort) {
         this.serverIP = serverIP;
@@ -29,10 +30,13 @@ public class TelemetryStreamClient implements Runnable {
 
     public void stop() {
         running = false;
+        runningThread.interrupt();
+        System.out.println("[Telemetry Stream Client] Closing!");
     }
 
     @Override
     public void run() {
+        this.runningThread = Thread.currentThread();
         try (Socket socket = new Socket(serverIP, serverPort);
             DataOutputStream out = new DataOutputStream(socket.getOutputStream())) {
             System.out.println("[TS] Connected to Mothership for telemetry.");
@@ -57,9 +61,8 @@ public class TelemetryStreamClient implements Runnable {
                     }
                 }
             }
-
         } catch (IOException e) {
-            System.out.println("[TS] Connection closed or lost.");
+            if (running) System.out.println("[TS] Connection closed or lost.");
             running = false;
         }
     }

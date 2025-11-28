@@ -8,6 +8,9 @@ import Message.Message.MessageDataTypes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Rover {
     private int id;
@@ -18,6 +21,7 @@ public class Rover {
     private final List<String> inventory = new ArrayList<>();
     private final int maxInventorySpace;
     private final List <PhysicalState> physicalStates;
+    private final CountDownLatch initiatedLatch = new CountDownLatch(1);
 
     private final RoverMissions roverMissions;
     private final RoverConnection roverConnection;
@@ -86,12 +90,23 @@ public class Rover {
                 return;
             }
         } else {
-            System.out.println("Warning: No ID given. Using default ID: 1");
+            System.out.println("Warning: No ID given. Using default ID: " + roverId);
         }
 
         Rover rover = new Rover(roverId, new Point3D(0,0,0), physicalStates, 5);
         rover.roverConnection.connectServer();
-        rover.roverConnection.sendInit();
+        rover.roverConnection.sendInit(roverId);
+
+        try {
+            rover.initiatedLatch.await(); // wait here until signal is received
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        if (rover.getId() == -1) {
+            System.out.println("A rover with that ID is already active. Shutting down.");
+            rover.roverConnection.closeServer();
+            return;
+        }
         rover.roverMissions.run();
         rover.roverConnection.sendTelemetry();
     }
@@ -101,6 +116,7 @@ public class Rover {
             case ROVER_INIT:
                 RoverInitMessage roverMsg = (RoverInitMessage) msg;
                 setId(roverMsg.getId());
+                initiatedLatch.countDown();
                 break;
             case MISSION:
                 MissionMessage missionMsg = (MissionMessage) msg;
