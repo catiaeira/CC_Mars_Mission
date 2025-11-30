@@ -40,7 +40,7 @@ public class MissionMessage implements MessageData{
     }
 
     public Mission getMission() {
-        return new Mission (roverId, missionType, areaCoordinates, areaRadius, missionTime, updateTime, isUrgent, isCompleted);
+        return new Mission (missionId,roverId, missionType, areaCoordinates, areaRadius, missionTime, updateTime, isUrgent, isCompleted);
     }
     public int getMissionId() {
         return missionId;

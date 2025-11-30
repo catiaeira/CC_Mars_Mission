@@ -92,6 +92,7 @@ public class Rover {
         Rover rover = new Rover(roverId, new Point3D(0,0,0), physicalStates, 5);
         rover.roverConnection.connectServer();
         rover.roverConnection.sendInit();
+        Thread.sleep(500);
         rover.roverMissions.run();
         rover.roverConnection.sendTelemetry();
     }
@@ -112,8 +113,8 @@ public class Rover {
         }
     }
 
-    public Message generateReply(Message receivedMsg) {
-        Message reply = null;
+    public MessageUDP generateReply(MessageUDP receivedMsg) {
+        MessageUDP reply = null;
 
         switch (receivedMsg.getMessageDataType()) {
             case MISSION:
@@ -126,8 +127,9 @@ public class Rover {
         }
 
         if (reply == null) { // no reply needed, send an ACK only
-            reply = new Message(receivedMsg.getSequenceNumber()+1,
+            reply = new MessageUDP(receivedMsg.getSequenceNumber()+1,
                     receivedMsg.getMessageId(),
+                    0, 0, 1,
                     Message.MessageDataTypes.ACK,
                     new ACKMessage(receivedMsg.getSequenceNumber())
             );

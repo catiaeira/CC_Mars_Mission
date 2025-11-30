@@ -5,8 +5,8 @@ import Utils.Point3D;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Mission implements Comparable<Mission> {
-    private final int missionId;
-    private final int roverId;
+    private int missionId;
+    private int roverId;
     private final MissionType missionType;
     private final Point3D areaCoordinates;
     private final int areaRadius;
@@ -39,11 +39,10 @@ public class Mission implements Comparable<Mission> {
         this.updateTime = updateTime;
         this.isUrgent = isUrgent;
     }
-    public Mission(int roverId, MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime, boolean isUrgent, boolean isCompleted) {
-        lock.lock();
-        this.missionId = counter;
-        counter++;
-        lock.unlock();
+
+
+    public Mission(int missionId, int roverId, MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime, boolean isUrgent, boolean isCompleted) {
+        this.missionId = missionId;
         this.roverId = roverId;
         this.missionType = missionType;
         this.areaCoordinates = areaCoordinates;
@@ -53,6 +52,10 @@ public class Mission implements Comparable<Mission> {
         this.isUrgent = isUrgent;
         this.isCompleted = isCompleted;
     }
+
+
+
+
 
     public int getMissionId() {
         return missionId;
@@ -85,6 +88,7 @@ public class Mission implements Comparable<Mission> {
     public void setCompleted() {
         this.isCompleted = true;
     }
+    public void setRoverId(int roverId) {this.roverId = roverId;}
     @Override
     public int compareTo(Mission mission) {
         if (this.isUrgent == mission.isUrgent) return 0;

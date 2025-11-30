@@ -1,6 +1,6 @@
 package Connection;
 
-import Message.Message;
+import Message.MessageUDP;
 import Message.RoverInitMessage;
 import Message.Package;
 import Rover.Rover;
@@ -27,7 +27,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         this.rover = rover;
     }
 
-    public void enqueueMessage(Message message) {
+    public void enqueueMessage(MessageUDP message) {
         try {
             Package p = new Package(serverIP, serverPort, message);
             outgoingQueue.put(p);
@@ -56,7 +56,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
     }
 
     @Override
-    public void processMessageContent(Message msg, DatagramPacket packet) {
+    public void processMessageContent(MessageUDP msg, DatagramPacket packet) {
         // 1. Processar ACK (Silencioso, ou podes por log normal se quiseres)
         if (msg.getAckNumber() != -2 && this.sender != null) {
             this.sender.confirmAck(msg.getAckNumber());
@@ -81,7 +81,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
             case MISSION:
                 UDPPrint.logSuccess("RCV", msg, "NOVA MISSÃO ACEITE E GUARDADA!");
-                this.rover.setState(Rover.MissionState.IN_MISSION);
+                //this.rover.setState(Rover.MissionState.IN_MISSION);
                 break;
 
             default:
@@ -94,7 +94,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
     }
 
     @Override
-    public void sendResponse(DatagramSocket socket, DatagramPacket requestPacket, Message reply) {
+    public void sendResponse(DatagramSocket socket, DatagramPacket requestPacket, MessageUDP reply) {
         try {
             byte[] replyBytes = reply.convertMessageToBytes();
 
@@ -109,7 +109,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         }
     }
     @Override
-    public Message generateReply(Message msg) {
+    public MessageUDP generateReply(MessageUDP msg) {
         return this.rover.generateReply(msg);
     }
 

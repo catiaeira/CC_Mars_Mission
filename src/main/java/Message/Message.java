@@ -3,20 +3,16 @@ package Message;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.io.Serializable;
 
 
-public class Message {
-    private static int msgIds = 1;
+public class Message implements Serializable {
+    protected static int msgIds = 1;
 
-    // --- HEADER ---
-    private final int sequenceNumber;
-    private final int messageId;
-    private final int ackNumber; // <--- ESTE CAMPO É ESSENCIAL
-    private final boolean isFragmented;
-    private final MessageDataTypes messageDataType;
-
-    // --- PAYLOAD ---
-    private final MessageData data;
+    // Identificador único (Lógica de Aplicação)
+    protected int messageId;
+    protected MessageDataTypes messageDataType;
+    protected MessageData data;
 
     public enum MessageDataTypes {
         MISSION,
@@ -27,132 +23,86 @@ public class Message {
         ACK;
     }
 
-    // --- GETTERS ---
-    public int getSequenceNumber() { return this.sequenceNumber; }
-    public int getMessageId() { return this.messageId; }
-    public int getAckNumber() { return this.ackNumber; } // Getter do ACK
-    public MessageDataTypes getMessageDataType() { return this.messageDataType; }
-    public MessageData getMessageData() { return this.data; }
-
-    // --- CONSTRUTORES ---
-
-    // 1. Construtor Simples (Sem ACK, usa -1 por defeito)
-    public Message(int sequenceNumber, MessageDataTypes messageDataType, boolean isFragmented, MessageData data) {
-        this(sequenceNumber, msgIds++, -1, messageDataType, isFragmented, data);
-    }
-
-    // unless specified, message is assumed to not be fragmented
-    public Message(int sequenceNumber, MessageDataTypes messageDataType, MessageData data) {
-        this(sequenceNumber, msgIds++, -1, messageDataType, false, data);
-    }
-
-    // 2. Construtor com ACK Explícito (Para Piggybacking)
-    public Message(int sequenceNumber, int ackNumber, MessageDataTypes messageDataType, boolean isFragmented, MessageData data) {
-        this(sequenceNumber, msgIds++, ackNumber, messageDataType, isFragmented, data);
-    }
-    public Message(int sequenceNumber, int ackNumber, MessageDataTypes messageDataType, MessageData data) {
-        this(sequenceNumber, msgIds++, ackNumber, messageDataType, false, data);
-    }
-
-    // 3. Construtor Mestre (Usado na conversão de bytes)
-    public Message(int sequenceNumber, int messageId, int ackNumber, MessageDataTypes messageDataType, boolean isFragmented, MessageData data) {
-        this.sequenceNumber = sequenceNumber;
-        this.messageId = messageId;
-        this.ackNumber = ackNumber;
-        this.messageDataType = messageDataType;
-        this.isFragmented = isFragmented;
+    // Construtor Base (Gera ID automático - 1 a 255)
+    public Message(MessageDataTypes type, MessageData data) {
+        this.messageId = msgIds++;
+        if (msgIds > 255) msgIds = 1;
+        this.messageDataType = type;
         this.data = data;
     }
 
-    // --- SERIALIZAÇÃO ---
+    // Construtor para Deserialização (ID já existe)
+    public Message(int messageId, MessageDataTypes type, MessageData data) {
+        this.messageId = messageId;
+        this.messageDataType = type;
+        this.data = data;
+    }
+
+    // --- SERIALIZAÇÃO TCP (Leve) ---
+    // [TotalLen] [ID] [Type] [Payload]
     public byte[] convertMessageToBytes() {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-            out.write((byte) sequenceNumber);
+            // HEADER SIMPLES
             out.write((byte) messageId);
-            out.write((byte) ackNumber); // <--- Escrever o ACK no cabeçalho
             out.write((byte) messageDataType.ordinal());
-            out.write(isFragmented ? 1 : 0);
 
+            // PAYLOAD
             byte[] dataBytes = data.convertMessageDataToBytes();
-            for (byte b : dataBytes) { // O teu loop original (pode ser otimizado com out.write(bytes), mas mantive igual)
-                out.write(b);
-            }
+            out.write(dataBytes); // Assumindo que o payload gere os seus bytes corretamente
 
             byte[] bytes = out.toByteArray();
 
-            // Adicionar tamanho total
+            // Adicionar tamanho total no início (Protocolo 1 byte length)
             byte[] bytesWithLength = new byte[bytes.length + 1];
-            bytesWithLength[0] = (byte) out.size();
+            bytesWithLength[0] = (byte) bytesWithLength.length;
             System.arraycopy(bytes, 0, bytesWithLength, 1, bytes.length);
 
             return bytesWithLength;
 
         } catch (Exception e) {
-            throw new RuntimeException("Error converting message to bytes", e);
+            throw new RuntimeException("Erro ao serializar Message (TCP)", e);
         }
     }
 
-    // --- DESERIALIZAÇÃO ---
+    // --- DESERIALIZAÇÃO TCP ---
     public static Message convertBytesToMessage(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-        int totalLength = Byte.toUnsignedInt(buffer.get()); // Consome o tamanho
-
-        int sequenceNumber = Byte.toUnsignedInt(buffer.get());
+        int totalLength = Byte.toUnsignedInt(buffer.get()); // Consome tamanho
         int messageId = Byte.toUnsignedInt(buffer.get());
-        int ackNumber = buffer.get(); // <--- Ler o ACK (como byte assinado para permitir -1)
-
         int messageDataTypeOrdinal = Byte.toUnsignedInt(buffer.get());
-        boolean isFragmented = Byte.toUnsignedInt(buffer.get()) != 0;
 
         MessageDataTypes dataType = MessageDataTypes.values()[messageDataTypeOrdinal];
 
-        // Calcular tamanho dos dados restantes
-        int headerSize = 4; // seq + id + ack + type
+        // Calcular tamanho do payload
+        // Header TCP = Length(1) + ID(1) + Type(1) = 3 bytes
+        int headerSize = 3;
         int dataLen = totalLength - headerSize;
 
-        // NOTA: O teu código original lia o tamanho dos dados a seguir.
-        // Se o teu convertMessageDataToBytes inclui o tamanho no início, o código abaixo funciona.
-        // Caso contrário, temos de ajustar. Assumindo que funciona como antes:
+        byte[] dataBytes = new byte[dataLen];
+        buffer.get(dataBytes, 0, dataLen);
 
-        // Se os dados tiverem o tamanho no primeiro byte (como tinhas antes):
-        // Vamos usar a lógica de ler byte a byte como tinhas:
-        int payloadSize = Byte.toUnsignedInt(buffer.get());
-        byte[] dataBytes = new byte[payloadSize + 1];
-        dataBytes[0] = (byte) payloadSize;
-        for (int i = 1; i < payloadSize + 1; i++) dataBytes[i] = buffer.get();
+        MessageData mData = parseMessageData(dataType, dataBytes);
+        return new Message(messageId, dataType, mData);
+    }
 
-        MessageData mData = null;
-        switch (dataType) {
-            case MISSION:
-                mData = MissionMessage.convertBytesToMessageData(dataBytes);
-                break;
-            case MISSION_UPDATE:
-                mData = UpdateMission.convertBytesToMessageData(dataBytes);
-                break;
-            case REQUEST_MISSION:
-                mData = RequestMission.convertBytesToMessageData(dataBytes);
-                break;
-            case ROVER_TELEMETRY:
-                mData = RoverTelemetryMessage.convertBytesToMessageData(dataBytes);
-                break;
-            case ROVER_INIT:
-                mData = RoverInitMessage.convertBytesToMessageData(dataBytes);
-                break;
-            case ACK:
-                mData = ACKMessage.convertBytesToMessageData(dataBytes);
-                break;
-            default:
-                // Opcional: tratar caso desconhecido ou deixar mData como null
-                break;
+    // Método auxiliar partilhado com a filha UDP
+    public static MessageData parseMessageData(MessageDataTypes type, byte[] dataBytes) {
+        switch (type) {
+            case MISSION: return MissionMessage.convertBytesToMessageData(dataBytes);
+            case REQUEST_MISSION: return RequestMission.convertBytesToMessageData(dataBytes);
+            case MISSION_UPDATE: return UpdateMission.convertBytesToMessageData(dataBytes);
+            case ROVER_INIT: return RoverInitMessage.convertBytesToMessageData(dataBytes);
+            case ROVER_TELEMETRY: return RoverTelemetryMessage.convertBytesToMessageData(dataBytes);
+            case ACK: return ACKMessage.convertBytesToMessageData(dataBytes);
+            default: return null;
         }
-        return new Message(sequenceNumber, messageId, ackNumber, dataType, isFragmented, mData);
     }
 
-    @Override
-    public String toString() {
-        return "Message { Seq=" + sequenceNumber + ", Ack=" + ackNumber + ", Type=" + messageDataType + ", Data=" + data + " }";
-    }
+    // GETTERS
+    public int getMessageId() { return messageId; }
+    public MessageDataTypes getMessageDataType() { return messageDataType; }
+    public MessageData getMessageData() { return data; }
 }
