@@ -23,8 +23,7 @@ public class MissionLinkReceiver implements Runnable {
 
     @Override
     public void run() {
-        byte[] buffer = new byte[2048];
-
+        byte[] buffer = new byte[1500];
         while (true) {
             try {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
