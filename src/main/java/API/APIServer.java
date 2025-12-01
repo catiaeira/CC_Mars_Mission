@@ -1,6 +1,7 @@
 package API;
 
 import Message.RoverTelemetryMessage;
+import Mission.Mission;
 import Mothership.RoverInfo;
 import Mothership.Mothership;
 
@@ -17,7 +18,7 @@ public class APIServer implements Runnable {
 
     private String ip;
     private int port;
-    private final Mothership mothership;;
+    private final Mothership mothership;
 
     public APIServer(String ip, int port, Mothership ms){
         this.ip = ip;
@@ -34,6 +35,7 @@ public class APIServer implements Runnable {
             server.createContext("/rovers", this::handleRoverInfo);
             server.createContext("/missions/active", this::handleActiveMissions);
             server.createContext("/missions/past", this::handlePastMissions);
+            server.createContext("/missions/future", this::handleFutureMissions);
             server.createContext("/telemetry", this::handleLastTelemetry);
 
             server.start();
@@ -59,8 +61,12 @@ public class APIServer implements Runnable {
 
             StringBuilder textBuilder = new StringBuilder();
 
-            for (RoverInfo i : info) {
-                textBuilder.append(i.toStringForAPI());
+            if(info.isEmpty()) {
+                textBuilder.append("No rovers connected, check again later.\n");
+            } else {
+                for (RoverInfo i : info) {
+                    textBuilder.append(i.toStringForAPI());
+                }
             }
 
             String text = textBuilder.toString();
@@ -74,15 +80,18 @@ public class APIServer implements Runnable {
         }
     }
 
-    //TO DO: UPDATE
     private void handleActiveMissions(HttpExchange ex) throws IOException {
         try {
-            Collection<RoverInfo> info = mothership.getRoverInfo();
+            Collection<Mission> info = mothership.getActiveMissions();
 
             StringBuilder textBuilder = new StringBuilder();
 
-            for (RoverInfo i : info) {
-                textBuilder.append(i.toStringForAPI());
+            if(info.isEmpty()) {
+                textBuilder.append("No active missions, check again later.\n");
+            } else {
+                for (Mission m : info) {
+                    textBuilder.append(m.toStringForAPI());
+                }
             }
 
             String text = textBuilder.toString();
@@ -95,15 +104,42 @@ public class APIServer implements Runnable {
         }
     }
 
-    //TO DO: UPDATE
     private void handlePastMissions(HttpExchange ex) throws IOException {
         try {
-            Collection<RoverInfo> info = mothership.getRoverInfo();
+            Collection<Mission> info = mothership.getPastMissions();
 
             StringBuilder textBuilder = new StringBuilder();
 
-            for (RoverInfo i : info) {
-                textBuilder.append(i.toStringForAPI());
+            if(info.isEmpty()) {
+                textBuilder.append("No finished missions yet, check again later.\n");
+            } else {
+                for (Mission m : info) {
+                    textBuilder.append(m.toStringForAPI());
+                }
+            }
+
+            String text = textBuilder.toString();
+
+            sendText(ex, text);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ex.sendResponseHeaders(500, -1);
+            ex.close();
+        }
+    }
+
+    private void handleFutureMissions(HttpExchange ex) throws IOException {
+        try {
+            Collection<Mission> info = mothership.getFutureMissions();
+
+            StringBuilder textBuilder = new StringBuilder();
+
+            if(info.isEmpty()) {
+                textBuilder.append("No future missions queued, check again later.\n");
+            } else {
+                for (Mission m : info) {
+                    textBuilder.append(m.toStringForAPI());
+                }
             }
 
             String text = textBuilder.toString();
@@ -122,8 +158,12 @@ public class APIServer implements Runnable {
 
             StringBuilder textBuilder = new StringBuilder();
 
-            for (RoverTelemetryMessage i : info) {
-                textBuilder.append(i.toStringForAPI());
+            if(info.isEmpty()){
+                textBuilder.append("No telemetry messages have been sent yet, check again later.\n");
+            } else {
+                for (RoverTelemetryMessage i : info) {
+                    if (i != null) textBuilder.append(i.toStringForAPI());
+                }
             }
 
             String text = textBuilder.toString();

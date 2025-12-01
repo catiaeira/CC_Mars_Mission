@@ -56,10 +56,10 @@ public class RoverConnection {
         System.out.println("[Rover " + this.rover.getId() + "] discarded mission " + m.getMissionId() + " (Seq " + seq + ", Ack " + ackToSend + ").");
     }
 
-    public void sendInit() {
+    public void sendInit(int roverId) {
         int seq = this.localSequenceNumber;
         int ackToSend = 0;
-        RoverInitMessage init = new RoverInitMessage(this.rover.getId());
+        RoverInitMessage init = new RoverInitMessage(roverId);
 
         MessageUDP msg = new MessageUDP(
                 seq,
@@ -89,7 +89,7 @@ public class RoverConnection {
                     Message msg = new Message(0, Message.MessageDataTypes.ROVER_TELEMETRY, new RoverTelemetryMessage(this.rover));
                     telemetryStreamClient.enqueueMessage(msg);
                     System.out.println("[Rover " + this.rover.getId() + "] sent a telemetry message.");
-                    Thread.sleep(120000); // every 2 minutes
+                    Thread.sleep(30000); // every 30 seconds
                 } catch (InterruptedException e) {
                     System.out.println("[Rover " + this.rover.getId() + "] Connection thread interrupted.");
                     running = false;
@@ -122,7 +122,10 @@ public class RoverConnection {
             System.out.println("Rover online: MissionLink (UDP) + TelemetryStream (TCP) active");
         } catch (Exception e) {
             System.out.println("Failed to establish connections: " + e.getMessage());
-            e.printStackTrace();
         }
+    }
+    public void closeServer() {
+        missionLinkClient.stop();
+        telemetryStreamClient.stop();
     }
 }

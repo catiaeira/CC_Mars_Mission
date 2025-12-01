@@ -16,8 +16,7 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
     private final int serverPort;
     private final BlockingQueue<Package> outgoingQueue = new LinkedBlockingQueue<>();
     private final Rover rover;
-
-    // 1. ALTERAÇÃO: Variável para guardar a referência do Sender
+    private MissionLinkReceiver receiver;
     private MissionLinkSender sender;
     private int lastProcessedSeq = -1; // Variável de memória essencial
 
@@ -38,14 +37,14 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
     @Override
     public void run() {
-        DatagramSocket socket = null;
         try {
-            socket = new DatagramSocket();
+            DatagramSocket socket = new DatagramSocket();
 
             this.sender = new MissionLinkSender(socket, this.outgoingQueue);
+            this.receiver = new MissionLinkReceiver(socket, this);
 
             Thread senderThread = new Thread(this.sender);
-            Thread receiverThread = new Thread(new MissionLinkReceiver(socket, this));
+            Thread receiverThread = new Thread(this.receiver);
 
             senderThread.start();
             receiverThread.start();
@@ -53,6 +52,12 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void stop() {
+        this.receiver.stop();
+        this.sender.stop();
+        System.out.println("[MissionLinkClient] Closing!");
     }
 
     @Override

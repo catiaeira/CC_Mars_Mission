@@ -8,7 +8,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.List;
-import java.net.UnknownHostException;
 import java.util.concurrent.BlockingQueue;
 
 public class MissionLinkSender implements Runnable {
@@ -22,13 +21,18 @@ public class MissionLinkSender implements Runnable {
     private volatile int waitingForAckNumber = -1;
     private volatile boolean ackReceived = false;
 
+    private Thread runningThread;
+    private boolean running = true;
+
     public MissionLinkSender(DatagramSocket socket, BlockingQueue<Package> outgoingQueue) {
         this.socket = socket;
         this.outgoingQueue = outgoingQueue;
     }
 
+    // Método chamado pelo Receiver quando chega um ACK
     public void confirmAck(int ackNumber) {
         synchronized (lock) {
+            // Se o ACK confirma o que estamos à espera (ou é maior/mais recente)
             if (ackNumber >= waitingForAckNumber) {
                 ackReceived = true;
                 lock.notify();
@@ -36,9 +40,15 @@ public class MissionLinkSender implements Runnable {
         }
     }
 
+    public void stop() {
+        running = false;
+        runningThread.interrupt();
+    }
+
     @Override
     public void run() {
-        while (true) {
+        this.runningThread = Thread.currentThread();
+        while (running) {
             try {
                 // 1. Pegar na próxima mensagem da fila
                 Package pkg = outgoingQueue.take();
@@ -109,9 +119,11 @@ public class MissionLinkSender implements Runnable {
                         }
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (IOException | InterruptedException e) {
+                if (running) System.out.println("[TS] Connection closed or lost.");
+                running = false;
             }
         }
+        System.out.println("Closing ML sender!");
     }
 }
