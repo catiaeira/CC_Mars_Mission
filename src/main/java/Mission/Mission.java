@@ -2,10 +2,9 @@ package Mission;
 
 import Utils.Point3D;
 
-import java.util.concurrent.locks.ReentrantLock;
 
 public class Mission implements Comparable<Mission> {
-    private int missionId;
+    private final int missionId;
     private int roverId;
     private final MissionType missionType;
     private final Point3D areaCoordinates;
@@ -14,9 +13,8 @@ public class Mission implements Comparable<Mission> {
     private final int updateTime;
     private final boolean isUrgent;
     private boolean isCompleted = false;
-    private final ReentrantLock lock = new ReentrantLock();
+    private static final java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger(1);
 
-    // updates: the mission must define how and how often the rover reports back to the mothership
 
     public enum MissionType {
         EXPLORE,
@@ -24,13 +22,8 @@ public class Mission implements Comparable<Mission> {
         TEST_ATMOSPHERE,
     }
 
-    private static int counter = 1;
-
     public Mission(int roverId, MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime, boolean isUrgent) {
-        lock.lock();
-        this.missionId = counter;
-        counter++;
-        lock.unlock();
+        this.missionId = counter.getAndIncrement();
         this.roverId = roverId;
         this.missionType = missionType;
         this.areaCoordinates = areaCoordinates;
@@ -39,8 +32,6 @@ public class Mission implements Comparable<Mission> {
         this.updateTime = updateTime;
         this.isUrgent = isUrgent;
     }
-
-
     public Mission(int missionId, int roverId, MissionType missionType, Point3D areaCoordinates, int areaRadius, int missionTime, int updateTime, boolean isUrgent, boolean isCompleted) {
         this.missionId = missionId;
         this.roverId = roverId;
@@ -52,10 +43,6 @@ public class Mission implements Comparable<Mission> {
         this.isUrgent = isUrgent;
         this.isCompleted = isCompleted;
     }
-
-
-
-
 
     public int getMissionId() {
         return missionId;
@@ -89,10 +76,57 @@ public class Mission implements Comparable<Mission> {
         this.isCompleted = true;
     }
     public void setRoverId(int roverId) {this.roverId = roverId;}
+
     @Override
     public int compareTo(Mission mission) {
         if (this.isUrgent == mission.isUrgent) return 0;
         if (this.isUrgent) return -1;
         return 1;
+    }
+    @Override
+    public String toString() {
+        return "Mission{" +
+                "missionId=" + missionId +
+                ", roverId=" + roverId +
+                ", missionType=" + missionType +
+                ", areaCoordinates=" + areaCoordinates +
+                ", areaRadius=" + areaRadius +
+                ", missionTime=" + missionTime +
+                ", updateTime=" + updateTime +
+                ", isUrgent=" + isUrgent +
+                ", isCompleted=" + isCompleted +
+                '}';
+    }
+    public String toStringForAPI() {
+        final int WIDTH = 80;
+
+        String SEPARATOR_LINE = "+" + "-".repeat(WIDTH - 2) + "+\n";
+
+        String mission = String.format("| Mission %d:%-" + (WIDTH - 13 - ((int) Math.log10(Math.abs(this.missionId)) + 1)) + "s |\n", this.missionId, "");
+        String rover = String.format("| Rover -> %d%-" + (WIDTH - 13 - String.valueOf(this.roverId).length()) + "s |\n", this.roverId, "");
+        String mtype = String.format("| Mission Type -> %-" + (WIDTH - 20) + "s |\n", this.missionType.toString());
+        String coords = String.format("| Coordinates -> %-" + (WIDTH - 19) + "s |\n", this.areaCoordinates.toString());
+        String radius = String.format("| Radius -> %d%-" + (WIDTH - 14 - ((int) Math.log10(Math.abs(this.areaRadius)) + 1)) + "s |\n", this.areaRadius, "");
+        String duration = String.format("| Duration -> %d%-" + (WIDTH - 16 - ((int) Math.log10(Math.abs(this.missionTime)) + 1)) + "s |\n", this.missionTime, "");
+        String update = String.format("| Update Interval -> %d%-" + (WIDTH - 23 - ((int) Math.log10(Math.abs(this.updateTime)) + 1)) + "s |\n", this.updateTime, "");
+
+        String urgency = (isUrgent) ? "Yes" : "No";
+        String urgencyLine = String.format("| Urgent -> %-" + (WIDTH - 14) + "s |\n", urgency);
+
+        String status = (isCompleted) ? "Completed" : "Ongoing";
+        String statusLine = String.format("| Status -> %-" + (WIDTH - 14) + "s |\n", status);
+
+        return SEPARATOR_LINE +
+                mission +
+                SEPARATOR_LINE +
+                rover +
+                mtype +
+                coords +
+                radius +
+                duration +
+                update +
+                urgencyLine +
+                statusLine +
+                SEPARATOR_LINE;
     }
 }

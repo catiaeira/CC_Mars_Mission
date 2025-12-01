@@ -11,6 +11,8 @@ import Message.RoverTelemetryMessage;
 import Message.RoverInitMessage;
 import Mission.Mission;
 
+import java.util.Arrays;
+
 public class RoverConnection {
     private final Rover rover;
     private MissionLinkClient missionLinkClient;
@@ -56,10 +58,10 @@ public class RoverConnection {
         System.out.println("[Rover " + this.rover.getId() + "] discarded mission " + m.getMissionId() + " (Seq " + seq + ", Ack " + ackToSend + ").");
     }
 
-    public void sendInit() {
+    public void sendInit(int roverId) {
         int seq = this.localSequenceNumber;
         int ackToSend = 0;
-        RoverInitMessage init = new RoverInitMessage(this.rover.getId());
+        RoverInitMessage init = new RoverInitMessage(roverId);
 
         MessageUDP msg = new MessageUDP(
                 seq,
@@ -73,6 +75,9 @@ public class RoverConnection {
         this.localSequenceNumber += (size > 0 ? size : 1);
         missionLinkClient.enqueueMessage(msg);
         System.out.println("[Rover] sent an init message (Seq " + seq + ").");
+        System.out.println("msg " + msg);
+        System.out.println("data " + Arrays.toString(msg.getMessageData().convertMessageDataToBytes()));
+        System.out.println(Arrays.toString(msg.convertMessageToBytes()));
     }
 
     public void sendUpdateMission (UpdateMission updateMission) {
@@ -89,7 +94,7 @@ public class RoverConnection {
                     Message msg = new Message(0, Message.MessageDataTypes.ROVER_TELEMETRY, new RoverTelemetryMessage(this.rover));
                     telemetryStreamClient.enqueueMessage(msg);
                     System.out.println("[Rover " + this.rover.getId() + "] sent a telemetry message.");
-                    Thread.sleep(120000); // every 2 minutes
+                    Thread.sleep(30000); // every 30 seconds
                 } catch (InterruptedException e) {
                     System.out.println("[Rover " + this.rover.getId() + "] Connection thread interrupted.");
                     running = false;
@@ -122,7 +127,10 @@ public class RoverConnection {
             System.out.println("Rover online: MissionLink (UDP) + TelemetryStream (TCP) active");
         } catch (Exception e) {
             System.out.println("Failed to establish connections: " + e.getMessage());
-            e.printStackTrace();
         }
+    }
+    public void closeServer() {
+        missionLinkClient.stop();
+        telemetryStreamClient.stop();
     }
 }

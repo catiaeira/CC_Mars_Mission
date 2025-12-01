@@ -4,14 +4,12 @@ import Message.MessageUDP;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class MissionLinkReceiver implements Runnable {
     private final DatagramSocket socket;
     private final MissionLinkGeneric ML;
+    private boolean running = true;
 
     // Buffer de Remontagem
     private final Map<Integer, List<MessageUDP>> reassemblyBuffer = new HashMap<>();
@@ -20,11 +18,12 @@ public class MissionLinkReceiver implements Runnable {
         this.socket = socket;
         this.ML = ML;
     }
+    public void stop() {running = false;}
 
     @Override
     public void run() {
         byte[] buffer = new byte[1500];
-        while (true) {
+        while (running) {
             try {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 socket.receive(packet);
@@ -75,7 +74,7 @@ public class MissionLinkReceiver implements Runnable {
                 if (finalMessage != null) {
                     ML.processMessageContent(finalMessage, packet);
 
-                    MessageUDP reply = (MessageUDP) ML.generateReply(finalMessage);
+                    MessageUDP reply = ML.generateReply(finalMessage);
                     if (reply != null) ML.sendResponse(socket, packet, reply);
                 }
 
@@ -83,5 +82,6 @@ public class MissionLinkReceiver implements Runnable {
                 e.printStackTrace();
             }
         }
+        System.out.println("Closing ML receiver!");
     }
 }

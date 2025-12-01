@@ -1,24 +1,20 @@
-package Mothership;
+    package Mothership;
 
-import Mission.Mission;
-import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import Message.*;
-import Message.MissionMessage;
-import java.util.HashMap;
-import java.util.Map;
+    import Message.*;
 
-public class Mothership { // controller
-    // Mapa para guardar os Rovers (evita IndexOutOfBounds)
-    private final Map<Integer, RoverInfo> rovers = new HashMap<>();
-    public MothershipMissions mothershipMissions;
+    import Mission.Mission;
+    import java.net.InetAddress;
+    import java.util.ArrayList;
+    import java.util.Collection;
+    import Message.*;
+    import Message.MissionMessage;
+    import java.util.HashMap;
+    import java.util.Map;
 
-    // REMOVIDO: private int localSequenceNumber = 0; (Causava conflito entre rovers)
+    public class Mothership { // controller
+        private final Map<Integer, RoverInfo> rovers = new HashMap<>();
+        public MothershipMissions mothershipMissions;
 
-    public Mothership() {
-        this.mothershipMissions = new MothershipMissions();
-    }
 
     public static void main(String[] args) {
         Mothership mothership = new Mothership();
@@ -31,9 +27,9 @@ public class Mothership { // controller
     public void updateRoverInfoWithTelemetry(Message msg) {
         if (msg.getMessageDataType() != Message.MessageDataTypes.ROVER_TELEMETRY) return;
 
-        RoverTelemetryMessage telemetry = (RoverTelemetryMessage) msg.getMessageData();
-        int roverId = telemetry.getId();
-        RoverInfo roverInfo = this.rovers.get(roverId);
+            RoverTelemetryMessage telemetry = (RoverTelemetryMessage) msg.getMessageData();
+            int roverId = telemetry.getId();
+            RoverInfo roverInfo = this.rovers.get(roverId);
 
         // Proteção contra NullPointerException (Race Condition)
         if (roverInfo == null) {
@@ -46,26 +42,21 @@ public class Mothership { // controller
         System.out.println("[Mothership] Telemetria atualizada para Rover " + roverId);
     }
 
-    // --- LÓGICA DE CONEXÃO (RESET) ---
-    public void storeRoverInfoConnection (Message msg, InetAddress ip, int port) {
-        if (msg.getMessageDataType() != Message.MessageDataTypes.ROVER_INIT) return;
-        RoverInitMessage roverInit = (RoverInitMessage) msg.getMessageData();
-        int roverId = roverInit.getId();
-        RoverInfo roverInfo = this.rovers.get(roverId);
-
-        if (roverInfo != null) {
-            // Se o Rover já existe, fazemos RESET à conexão para reiniciar contadores
-            System.out.println("[Mothership] Rover " + roverId + " a reconectar-se. Reiniciando sessão.");
-            roverInfo.resetConnection(ip, port);
-        } else {
+        public void storeRoverInfoConnection (Message msg, InetAddress ip, int port) {
+            if (msg.getMessageDataType() != Message.MessageDataTypes.ROVER_INIT) return;
+            RoverInitMessage roverInit = (RoverInitMessage) msg.getMessageData();
+            int roverId = roverInit.getId();
+            RoverInfo roverInfo = this.rovers.get(roverId);
+            if (roverInfo != null) {
+                System.out.println("[Mothership] Rover with that id already exists!");
+                return;
+            }
             System.out.println("[Mothership] New rover initiating: ID " + roverId);
             roverInfo = new RoverInfo(roverId, ip, port);
             this.rovers.put(roverId, roverInfo);
-        }
 
-        roverInfo.updateLastActiveTimestamp(System.currentTimeMillis());
-        System.out.println("Stored the ip and port of Rover " + roverId);
-    }
+            roverInfo.updateLastActiveTimestamp(System.currentTimeMillis());
+        }
 
     // --- LÓGICA DE RESPOSTA ---
     public MessageUDP generateReply(MessageUDP receivedMsg) {
@@ -86,19 +77,18 @@ public class Mothership { // controller
             case ACK:
                 return null; // ACKs não precisam de resposta
 
-            // --- INICIALIZAÇÃO ---
-            case ROVER_INIT:
-                RoverInitMessage initMsg = (RoverInitMessage) receivedMsg.getMessageData();
-                int idFinal;
+                // --- INICIALIZAÇÃO ---
+                case ROVER_INIT:
+                    RoverInitMessage initMsg = (RoverInitMessage) receivedMsg.getMessageData();
+                    int idParaRegistar;
 
-                if (initMsg.getId() > 0) {
-                    idFinal = initMsg.getId();
-                } else {
-                    idFinal = rovers.size() + 1;
-                }
+                    int givenID = initMsg.getId();
+                    RoverInfo rover = this.rovers.get(givenID);
+                    if (rover.getLastTelemetryMessage() != null) idParaRegistar = -1;
+                    else idParaRegistar = givenID;
 
                 // Obter RoverInfo para usar o contador DELE
-                RoverInfo rInfoInit = this.rovers.get(idFinal);
+                RoverInfo rInfoInit = this.rovers.get(idParaRegistar);
                 int seqInit = (rInfoInit != null) ? rInfoInit.getAndIncrementOutputSequenceNumber() : 0;
 
                 reply = new MessageUDP(
@@ -106,7 +96,7 @@ public class Mothership { // controller
                         ackNum,
                         fragID, fragIdx, totalFrags,
                         Message.MessageDataTypes.ROVER_INIT,
-                        new RoverInitMessage(idFinal)
+                        new RoverInitMessage(idParaRegistar)
                 );
                 break;
 
@@ -135,9 +125,9 @@ public class Mothership { // controller
                         new MissionMessage(mission));
                 break;
 
-            default:
-                break;
-        }
+                default:
+                    break;
+            }
 
         // Fallback: Envia ACK puro
         if (reply == null) {
@@ -162,6 +152,19 @@ public class Mothership { // controller
     public Collection<RoverInfo> getRoverInfo() {
         return this.rovers.values();
     }
+
+    public Collection<Mission> getActiveMissions() {
+        return mothershipMissions.getActiveMissions();
+    }
+
+    public Collection<Mission> getPastMissions() {
+        return mothershipMissions.getPastMissions();
+    }
+
+    public Collection<Mission> getFutureMissions() {
+        return mothershipMissions.getFutureMissions();
+    }
+
 
     public ArrayList<RoverTelemetryMessage> getLastTelemetry() {
         ArrayList<RoverTelemetryMessage> res = new ArrayList<RoverTelemetryMessage>();

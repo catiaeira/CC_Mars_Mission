@@ -2,6 +2,8 @@ package Message;
 
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.io.Serializable;
 
@@ -9,7 +11,6 @@ import java.io.Serializable;
 public class Message implements Serializable {
     protected static int msgIds = 1;
 
-    // Identificador único (Lógica de Aplicação)
     protected int messageId;
     protected MessageDataTypes messageDataType;
     protected MessageData data;
@@ -23,13 +24,18 @@ public class Message implements Serializable {
         ACK;
     }
 
-    // Construtor Base (Gera ID automático - 1 a 255)
     public Message(MessageDataTypes type, MessageData data) {
         this.messageId = msgIds++;
-        if (msgIds > 255) msgIds = 1;
         this.messageDataType = type;
         this.data = data;
     }
+
+    public Message(Message msg) {
+        this.messageId = msg.messageId;
+        this.messageDataType = msg.messageDataType;
+        this.data = msg.data;
+    }
+
 
     // Construtor para Deserialização (ID já existe)
     public Message(int messageId, MessageDataTypes type, MessageData data) {
@@ -38,67 +44,59 @@ public class Message implements Serializable {
         this.data = data;
     }
 
-    // --- SERIALIZAÇÃO TCP (Leve) ---
-    // [TotalLen] [ID] [Type] [Payload]
     public byte[] convertMessageToBytes() {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] contentBytes;
+        try (ByteArrayOutputStream contentOutBytes = new ByteArrayOutputStream();
+             DataOutputStream contentOut = new DataOutputStream(contentOutBytes)) {
 
-            // HEADER SIMPLES
-            out.write((byte) messageId);
-            out.write((byte) messageDataType.ordinal());
+            contentOut.writeInt(messageId);
+            contentOut.writeInt(messageDataType.ordinal());
 
-            // PAYLOAD
             byte[] dataBytes = data.convertMessageDataToBytes();
-            out.write(dataBytes); // Assumindo que o payload gere os seus bytes corretamente
+            contentOut.write(dataBytes);
 
-            byte[] bytes = out.toByteArray();
+            contentOut.flush();
+            contentBytes = contentOutBytes.toByteArray();
 
-            // Adicionar tamanho total no início (Protocolo 1 byte length)
-            byte[] bytesWithLength = new byte[bytes.length + 1];
-            bytesWithLength[0] = (byte) bytesWithLength.length;
-            System.arraycopy(bytes, 0, bytesWithLength, 1, bytes.length);
-
-            return bytesWithLength;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao serializar Message (TCP)", e);
+        } catch (IOException e) {
+            throw new RuntimeException("Error serializing content.", e);
         }
+        return MessageData.addSizeToArray(contentBytes);
     }
 
-    // --- DESERIALIZAÇÃO TCP ---
     public static Message convertBytesToMessage(byte[] bytes) {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-        int totalLength = Byte.toUnsignedInt(buffer.get()); // Consome tamanho
-        int messageId = Byte.toUnsignedInt(buffer.get());
-        int messageDataTypeOrdinal = Byte.toUnsignedInt(buffer.get());
+        int totalLength = buffer.getInt();
+
+        int messageId = buffer.getInt();
+        int messageDataTypeOrdinal = buffer.getInt();
 
         MessageDataTypes dataType = MessageDataTypes.values()[messageDataTypeOrdinal];
 
-        // Calcular tamanho do payload
-        // Header TCP = Length(1) + ID(1) + Type(1) = 3 bytes
-        int headerSize = 3;
-        int dataLen = totalLength - headerSize;
+        int dataPayloadSize = buffer.getInt();
+        byte[] data = new byte[dataPayloadSize];
+        buffer.get(data, 0, dataPayloadSize);
 
-        byte[] dataBytes = new byte[dataLen];
-        buffer.get(dataBytes, 0, dataLen);
+        byte[] dataBytes = MessageData.addSizeToArray(data);
 
         MessageData mData = parseMessageData(dataType, dataBytes);
+
         return new Message(messageId, dataType, mData);
     }
 
     // Método auxiliar partilhado com a filha UDP
     public static MessageData parseMessageData(MessageDataTypes type, byte[] dataBytes) {
-        switch (type) {
-            case MISSION: return MissionMessage.convertBytesToMessageData(dataBytes);
-            case REQUEST_MISSION: return RequestMission.convertBytesToMessageData(dataBytes);
-            case MISSION_UPDATE: return UpdateMission.convertBytesToMessageData(dataBytes);
-            case ROVER_INIT: return RoverInitMessage.convertBytesToMessageData(dataBytes);
-            case ROVER_TELEMETRY: return RoverTelemetryMessage.convertBytesToMessageData(dataBytes);
-            case ACK: return ACKMessage.convertBytesToMessageData(dataBytes);
-            default: return null;
-        }
+        if (dataBytes == null) return null;
+        return switch (type) {
+            case MISSION -> MissionMessage.convertBytesToMessageData(dataBytes);
+            case REQUEST_MISSION -> RequestMission.convertBytesToMessageData(dataBytes);
+            case MISSION_UPDATE -> UpdateMission.convertBytesToMessageData(dataBytes);
+            case ROVER_INIT -> RoverInitMessage.convertBytesToMessageData(dataBytes);
+            case ROVER_TELEMETRY -> RoverTelemetryMessage.convertBytesToMessageData(dataBytes);
+            case ACK -> ACKMessage.convertBytesToMessageData(dataBytes);
+            default -> null;
+        };
     }
 
     // GETTERS
