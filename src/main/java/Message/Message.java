@@ -5,10 +5,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.io.Serializable;
 
 
-public class Message implements Serializable {
+public class Message {
     protected static int msgIds = 1;
 
     protected int messageId;

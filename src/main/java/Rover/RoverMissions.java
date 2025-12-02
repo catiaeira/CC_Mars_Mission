@@ -27,13 +27,7 @@ public class RoverMissions {
     public void addMission(Mission mission) {
         this.missionsToDo.put(mission);
     }
-    /*
-    TODO
-        error case
-        divide missions in 2 if estimated consumption is over 100 ?
-        yet to test:
-            priority queue
-     */
+
     final long   LOOP_INTERVAL = 1000; // update every second
     final double CHARGE_RATE = 1; // per second
     final int    FIX_RATE = 5;
@@ -349,7 +343,7 @@ public class RoverMissions {
         double consumption = m.getMissionTime() * consumptionPerMission
                 + timeBetweenPlaces(rover.getPosition(), m.getAreaCoordinates()) * CONSUMPTION_WALKING * 2;
 
-        System.out.println("Estimated mission consumption: " + consumption);
+        System.out.printf("Estimated mission consumption: %.2f\n", consumption);
         return (rover.getBatteryLevel() > consumption);
     }
 
@@ -413,10 +407,22 @@ public class RoverMissions {
         if (totalDuration > 0)
             progressPercent = (int) Math.min(100, Math.round((double) timeElapsed / totalDuration * 100));
 
+        byte[] extraData;
+        if (currM.getMissionType() == Mission.MissionType.EXPLORE) {
+            int size = 16384;
+            Random ran = new Random();
+            extraData = new byte[size];
+            for (int i = 0; i<size; i++) {
+                extraData[i] = (byte) ran.nextInt(255);
+            }
+
+        } else extraData = new byte[0];
+
         UpdateMission updateMission = new UpdateMission(
                 currM.getMissionId(),
                 rover.getId(),
-                progressPercent
+                progressPercent,
+                extraData
         );
 
         try {

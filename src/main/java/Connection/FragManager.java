@@ -14,7 +14,7 @@ public class FragManager { // Nome da classe alterado
 
     // Tamanho máximo do payload de cada fragmento (Bytes)
     // 512 é seguro para UDP na internet.
-    public static int MAX_FRAGMENT_SIZE = 1500;
+    public static int MAX_FRAGMENT_SIZE = 1400;
 
     /**
      * 1. CORTAR: Divide uma mensagem grande em vários pacotes pequenos

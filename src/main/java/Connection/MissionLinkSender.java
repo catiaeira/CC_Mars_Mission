@@ -146,7 +146,7 @@ public class MissionLinkSender implements Runnable {
                 }
             } catch (IOException | InterruptedException e) {
                 if (running) System.out.println("[ML SENDER] Connection closed or lost.");
-                e.printStackTrace();
+                else e.printStackTrace();
                 running = false;
             }
         }

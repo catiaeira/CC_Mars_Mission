@@ -126,12 +126,16 @@ public class MessageUDP extends Message {
 
     @Override
     public String toString() {
-        return "UDP { " +
-                "Seq=" + sequenceNumber +
-                " | Ack=" + ackNumber +
-                " | Type=" + messageDataType +
-                " | Frag=" + (fragmentIndex + 1) + "/" + totalFragments +
-                " | Data=" + data +
-                " }";
+        String res= "UDP { " +
+                    "Seq=" + sequenceNumber +
+                    " | Ack=" + ackNumber +
+                    " | Type=" + messageDataType +
+                    " | Frag=" + (fragmentIndex + 1) + "/" + totalFragments +
+                    " | Data=";
+
+        if (isFragmented()) res = res.concat("[---]");
+        else res = res.concat(data.toString());
+        res = res.concat(" }");
+        return res;
     }
 }

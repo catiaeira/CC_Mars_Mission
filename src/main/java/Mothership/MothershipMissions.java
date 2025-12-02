@@ -35,7 +35,8 @@ public class MothershipMissions {
     public Mission createRandomMissionToRover (int idRover) {
         Random rand = new Random();
         Mission.MissionType type = Mission.MissionType.values()[rand.nextInt(Mission.MissionType.values().length)];
-        Point3D coords = new Point3D(rand.nextInt(30), rand.nextInt(30), rand.nextInt(30));
+        int coordsDistance = 20;
+        Point3D coords = new Point3D(rand.nextInt(coordsDistance), rand.nextInt(coordsDistance), rand.nextInt(coordsDistance));
         int area =  rand.nextInt(1,30);
         int time = rand.nextInt(10,60);            // 1 min max
         int updateTime = rand.nextInt(1,time/3);    // 3 updates per mission min
