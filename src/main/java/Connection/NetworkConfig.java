@@ -10,7 +10,6 @@ public class NetworkConfig {
             ID.MISSION_LINK_PORT,     "6000",
             ID.API_SERVER,            "7000",
             ID.GROUND_CONTROL,        "10.0.8.10"
-            //ID.GROUND_CONTROL,        "localhost" // for local testing
     );
 
     public enum ID{
