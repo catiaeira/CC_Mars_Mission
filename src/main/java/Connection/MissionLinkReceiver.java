@@ -40,7 +40,7 @@ public class MissionLinkReceiver implements Runnable {
                 System.arraycopy(packet.getData(), 0, msgBytes, 0, packet.getLength());
 
                 MessageUDP receivedMsg = MessageUDP.convertBytesToMessageUDP(msgBytes);
-                //System.out.println("[ML RECEIVER] MESSAGE: " + receivedMsg.toString());
+                System.out.println("\n[ML RECEIVER] MESSAGE: " + receivedMsg.toString());
 
                 if (receivedMsg.getAckNumber() != -2) {
                     //System.out.println("CONFIRMED ACK: " + receivedMsg.getAckNumber());

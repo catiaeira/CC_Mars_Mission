@@ -51,12 +51,17 @@ public class MissionLinkSender implements Runnable {
 
     // Método chamado pelo Receiver quando chega um ACK
     public void confirmAck(int ackNumber, String address) {
+        System.out.println("\nAcknowledging " + ackNumber + " from " + address);
         PendingAck p = pendingAcks.get(address);
+        pendingAcks.forEach((key, value) ->
+                System.out.println("Key: " + key + ", Value: " + value.waitingForAckNumber)
+        );
         if (p == null) return;
+        System.out.println("RECEIVED ACK : " + ackNumber + " AND WAITING FOR " + p.waitingForAckNumber);
         synchronized (p.lock) {
             if (ackNumber >= p.waitingForAckNumber) {
                 p.ackReceived = true;
-                p.lock.notifyAll(); // NotifyAll é mais seguro
+                p.lock.notifyAll();
             }
         }
     }
@@ -120,6 +125,8 @@ public class MissionLinkSender implements Runnable {
                 String pendingKey = ipAddress.getHostAddress() + ":" + port;
                 pendingAcks.put(pendingKey, pAck);
 
+                System.out.println("ACK: " + pAck.waitingForAckNumber + " TO: " + pendingKey);
+
                 // --- PASSO 1: FRAGMENTAR A MENSAGEM ---
                 List<MessageUDP> fragments = FragManager.fragmentMessage(msg);
 
@@ -146,6 +153,7 @@ public class MissionLinkSender implements Runnable {
                         //System.out.println("expecting: " + pAck.waitingForAckNumber);
                     } else {
                         UDPPrint.log("SND", msg, "To: " + pkg.getToIp() + fragInfo + " (Waiting ACK " + expectedAck + ")", false);
+                        System.out.println(msg.toString());
                     }
 
                     // 3. ESPERAR PELO ACK (com Timeout)
@@ -172,8 +180,10 @@ public class MissionLinkSender implements Runnable {
                 this.currentPendingAck = null;
 
             } catch (IOException | InterruptedException e) {
-                if (running) System.out.println("[ML SENDER] Connection closed or lost.");
-                else e.printStackTrace();
+                if (running) {
+                    System.out.println("[ML SENDER] Connection closed or lost.");
+                    e.printStackTrace();
+                }
                 running = false;
             }
         }

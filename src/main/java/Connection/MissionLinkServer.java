@@ -1,6 +1,5 @@
 package Connection;
 
-import Message.Message;
 import Message.UpdateMission;
 import Message.Package;
 import Message.MessageUDP;
