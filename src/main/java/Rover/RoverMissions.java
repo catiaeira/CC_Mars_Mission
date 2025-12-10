@@ -3,6 +3,7 @@ package Rover;
 import Message.UpdateMission;
 import Mission.Mission;
 import Utils.Point3D;
+import Utils.UDPPrint;
 
 import java.util.List;
 import java.util.Random;
@@ -25,7 +26,10 @@ public class RoverMissions {
         this.missionsToDo = new PriorityBlockingQueue<>();
     }
     public void addMission(Mission mission) {
-        if (!this.missionsToDo.contains(mission)) this.missionsToDo.put(mission);
+        if (!this.missionsToDo.contains(mission)){
+            UDPPrint.logSuccess("RCV", null, "NOVA MISSÃO ACEITE E GUARDADA!");
+            this.missionsToDo.put(mission);
+        }
     }
 
     final long   LOOP_INTERVAL = 1000; // update every second

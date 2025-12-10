@@ -4,6 +4,7 @@ import Utils.Point3D;
 
 import Message.*;
 import Message.Message.MessageDataTypes;
+import Utils.UDPPrint;
 
 
 import java.util.ArrayList;
@@ -105,6 +106,7 @@ public class Rover {
             rover.roverConnection.closeServer();
             return;
         }
+        UDPPrint.logSuccess("RCV", null, "ID Atribuído: " +rover.getId());
         rover.roverMissions.run();
         rover.roverConnection.sendTelemetry();
     }

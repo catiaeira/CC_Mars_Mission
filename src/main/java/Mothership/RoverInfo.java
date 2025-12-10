@@ -85,10 +85,13 @@ public class RoverInfo {
         String battery = "N/A";
         if (this.lastTelemetryMessage != null) {
             status = this.lastTelemetryMessage.getMissionState().toString();
-            battery = this.lastTelemetryMessage.getBatteryLevel() + "%";
+            battery = Math.round(this.lastTelemetryMessage.getBatteryLevel() * 100.0) / 100.0 + "%";
         }
         String statusLine = String.format("| Status -> %-" + (WIDTH - 14) + "s |\n", status);
         String batteryLine = String.format("| Battery -> %-" + (WIDTH - 15) + "s |\n", battery);
+
+        long time = (System.currentTimeMillis()-this.lastActiveTimestamp)/1000;
+        String lastActive = String.format("| Last Active -> %d seconds ago %-" + (WIDTH - 32 - ((int) Math.log10(Math.abs(time)) + 1)) + "s |\n", time, " ");
 
         return SEPARATOR_LINE +
                 rover +
@@ -96,6 +99,7 @@ public class RoverInfo {
                 ipAddress +
                 statusLine +
                 batteryLine +
+                lastActive +
                 SEPARATOR_LINE;
     }
 }

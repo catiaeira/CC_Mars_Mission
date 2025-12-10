@@ -65,17 +65,10 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
         switch (msg.getMessageDataType()) {
             case ROVER_INIT:
-                RoverInitMessage message = (RoverInitMessage) msg.getMessageData();
-                UDPPrint.logSuccess("RCV", msg, "ID Atribuído: " + message.getId());
                 if (this.sender != null) {
                     this.sender.cancelCurrentTransmission();
                 }
                 break;
-
-            case MISSION:
-                UDPPrint.logSuccess("RCV", msg, "NOVA MISSÃO ACEITE E GUARDADA!");
-                break;
-
             default:
                 // Outras mensagens (como ACKs puros) ficam em log normal ou silêncio
                 // WiresharkLogger.log("RCV", msg, "ACK/Outro recebido", false);
