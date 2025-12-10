@@ -73,6 +73,7 @@ public class MothershipMissions {
                 throw new RuntimeException(e);
             }
         }).start();
+        System.out.println("[MothershipMissions] Sistema de missões iniciado (Modo Passivo).");
     }
 
     public void processMissionUpdate (UpdateMission msg) {
@@ -84,13 +85,13 @@ public class MothershipMissions {
         }
         int completionLevel = msg.getCompletionLevel();
         if (completionLevel < 0 || completionLevel > 100) {
-            activeMissions.remove(missionId);
+            //activeMissions.remove(missionId);
             discardedMissions.put(missionId, m);
             System.out.println("[MOTHERSHIP MISSIONS] Mission " + msg.getIdMission() + " discarded!");
         }
         else if (completionLevel == 100) {
             m.setCompleted();
-            activeMissions.remove(missionId);
+            //activeMissions.remove(missionId);
             completedMissions.put(missionId, m);
             System.out.println("[MOTHERSHIP MISSIONS] Mission " + msg.getIdMission() + " completed!");
         }

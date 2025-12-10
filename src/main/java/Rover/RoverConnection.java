@@ -79,6 +79,7 @@ public class RoverConnection {
 
     public void sendUpdateMission (UpdateMission updateMission) {
         MessageUDP msg = new MessageUDP(0, -1, 0, 0, 1,MessageUDP.MessageDataTypes.MISSION_UPDATE, updateMission);
+
         missionLinkClient.enqueueMessage(msg);
         System.out.println("[Rover " + this.rover.getId() + "] sent a mission update.");
     }

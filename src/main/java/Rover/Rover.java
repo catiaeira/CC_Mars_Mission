@@ -112,7 +112,12 @@ public class Rover {
     public void processMessage(MessageDataTypes type, MessageData msg) {
         switch (type) {
             case ROVER_INIT:
+                // Se já iniciei (Latch a 0) e o ID recebido é o meu, ignoro duplicados
                 RoverInitMessage roverMsg = (RoverInitMessage) msg;
+                if (initiatedLatch.getCount() == 0 && this.id == roverMsg.getId()) {
+                    return; // Ignora silenciosamente
+                }
+
                 setId(roverMsg.getId());
                 initiatedLatch.countDown();
                 break;
