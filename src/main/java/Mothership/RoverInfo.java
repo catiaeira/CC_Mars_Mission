@@ -2,18 +2,18 @@ package Mothership;
 
 import java.net.InetAddress;
 import Message.RoverTelemetryMessage;
-import Message.Message;
+import Message.MessageUDP;
 
 public class RoverInfo {
     private final int roverId;
-    private InetAddress roverIpAddress;
-    private int roverPort;
+    private final InetAddress roverIpAddress;
+    private final int roverPort;
     private RoverTelemetryMessage lastTelemetryMessage;
     private long lastActiveTimestamp;
 
     // Variáveis de Controlo
     private int lastProcessedSequenceNumber = -1;
-    private Message lastSentMessage = null;
+    private MessageUDP lastSentMessage = null;
 
     // --- VARIÁVEL PARA CONTAR O ENVIO ---
     private int outputSequenceNumber = 0;
@@ -31,11 +31,11 @@ public class RoverInfo {
         return this.outputSequenceNumber++;
     }
 
-    public Message getLastSentMessage() {
+    public MessageUDP getLastSentMessage() {
         return lastSentMessage;
     }
 
-    public void setLastSentMessage(Message msg) {
+    public void setLastSentMessage(MessageUDP msg) {
         this.lastSentMessage = msg;
     }
 

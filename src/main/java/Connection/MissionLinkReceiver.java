@@ -60,7 +60,7 @@ public class MissionLinkReceiver implements Runnable {
                     for (MessageUDP existing : parts) {
                         if (existing.getFragmentIndex() == receivedMsg.getFragmentIndex()) {
                             alreadyExists = true;
-                            UDPPrint.logError("RCV", existing, "Já processado. Ignorado.");
+                            UDPPrint.logError("RCV", existing, "Already processed. Ignored.");
                             break;
                         }
                     }

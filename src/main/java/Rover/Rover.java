@@ -85,7 +85,7 @@ public class Rover {
                 // args[0] é o primeiro argumento da linha de comandos
                 roverId = Integer.parseInt(args[0].trim().replaceAll("[^0-9]", ""));
             } catch (NumberFormatException e) {
-                System.err.println("Erro: O ID do Rover deve ser um número inteiro.");
+                System.err.println("Warning: The ID for the Rover should be an int.");
                 return;
             }
         } else {
@@ -115,6 +115,8 @@ public class Rover {
         switch (type) {
             case ROVER_INIT:
                 RoverInitMessage roverMsg = (RoverInitMessage) msg;
+                if (initiatedLatch.getCount() == 0 && this.id == roverMsg.getId()) return;
+
                 setId(roverMsg.getId());
                 initiatedLatch.countDown();
                 break;

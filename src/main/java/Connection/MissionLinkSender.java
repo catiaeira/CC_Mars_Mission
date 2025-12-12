@@ -16,8 +16,8 @@ public class MissionLinkSender implements Runnable {
     private final BlockingQueue<Package> outgoingQueue;
 
     // Variáveis partilhadas para controlo
-    private static final int MAX_TIMEOUTS = 10;
-    private static final int TIMEOUT_MS = 4000; // 4 segundos para retransmitir
+    private static final int MAX_TIMEOUTS = 5;
+    private static final int TIMEOUT_MS = 5000; // 5 segundos para retransmitir
     private final ConcurrentHashMap<String, MessageUDP> lastSentReply = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, PendingAck> pendingAcks = new ConcurrentHashMap<>();
 
@@ -32,8 +32,6 @@ public class MissionLinkSender implements Runnable {
         volatile boolean ackReceived = false;
         PendingAck(int expected) { this.waitingForAckNumber = expected; }
     }
-
-    private Thread runningThread;
     private boolean running = true;
 
     public MissionLinkSender(DatagramSocket socket, BlockingQueue<Package> outgoingQueue) {
@@ -51,13 +49,9 @@ public class MissionLinkSender implements Runnable {
 
     // Método chamado pelo Receiver quando chega um ACK
     public void confirmAck(int ackNumber, String address) {
-        System.out.println("\nAcknowledging " + ackNumber + " from " + address);
         PendingAck p = pendingAcks.get(address);
-        pendingAcks.forEach((key, value) ->
-                System.out.println("Key: " + key + ", Value: " + value.waitingForAckNumber)
-        );
         if (p == null) return;
-        System.out.println("RECEIVED ACK : " + ackNumber + " AND WAITING FOR " + p.waitingForAckNumber);
+        System.out.println("RECEIVED ACK : " + ackNumber + " AND WAS WAITING FOR " + p.waitingForAckNumber);
         synchronized (p.lock) {
             if (ackNumber >= p.waitingForAckNumber) {
                 p.ackReceived = true;
@@ -81,12 +75,10 @@ public class MissionLinkSender implements Runnable {
 
     public void stop() {
         running = false;
-        if (runningThread != null) runningThread.interrupt();
     }
 
     @Override
     public void run() {
-        this.runningThread = Thread.currentThread();
         while (running) {
             try {
                 // 1. Pegar na próxima mensagem da fila
@@ -124,8 +116,6 @@ public class MissionLinkSender implements Runnable {
 
                 String pendingKey = ipAddress.getHostAddress() + ":" + port;
                 pendingAcks.put(pendingKey, pAck);
-
-                System.out.println("ACK: " + pAck.waitingForAckNumber + " TO: " + pendingKey);
 
                 // --- PASSO 1: FRAGMENTAR A MENSAGEM ---
                 List<MessageUDP> fragments = FragManager.fragmentMessage(msg);

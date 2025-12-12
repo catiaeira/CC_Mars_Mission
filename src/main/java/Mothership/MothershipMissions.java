@@ -79,11 +79,23 @@ public class MothershipMissions {
     public void processMissionUpdate (UpdateMission msg) {
         int missionId = msg.getIdMission();
         Mission m = activeMissions.get(missionId);
+        int completionLevel = msg.getCompletionLevel();
         if (m == null) {
             System.out.println("[MOTHERSHIP MISSIONS] Updated mission not found!"); // shouldn't happen
-            return;
+            if (completionLevel < 0 || completionLevel > 100) return; // probably a repeated message
+
+            if (discardedMissions.containsKey(missionId)) {
+                Mission accidentallyDiscarded = discardedMissions.remove(missionId);
+                activeMissions.put(missionId, accidentallyDiscarded);
+                m = accidentallyDiscarded;
+            }
+            else if (completedMissions.containsKey(missionId)) {
+                Mission accidentallyCompleted = completedMissions.remove(missionId);
+                activeMissions.put(missionId, accidentallyCompleted);
+                m = accidentallyCompleted;
+            }
+            else return;
         }
-        int completionLevel = msg.getCompletionLevel();
         if (completionLevel < 0 || completionLevel > 100) {
             activeMissions.remove(missionId);
             discardedMissions.put(missionId, m);
