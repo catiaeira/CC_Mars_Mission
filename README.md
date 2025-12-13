@@ -1,7 +1,11 @@
 # Comunicações por Computador - Projeto 25/26
+
 ---
+
 ###### PL5 Group 2: Cátia Eira (a107382), Filipa Cosquete (a106837), Fábio Silva (a82331)
+
 ---
+
 A Java program that simulates the communication between a mothership, one or more simultaneous rovers performing missions on Mars, and a ground control entity.
 
 ---
