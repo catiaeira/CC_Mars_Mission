@@ -51,11 +51,12 @@ This script will automatically install the required packages.
 Installs Java 21 and Maven inside the VM  
 #### Usage:
 ```
-./scripts/vmconfig.sh
+sudo ./scripts/vmconfig.sh
 ```
 ---
 `setup.sh`  
 Compiles program files using maven or javac, and copies the remaining scripts to their proper directories in core.  
+The first time compiling with Maven will take a bit longer than subsequent compilations.
 #### Usage options:
 
 ``` bash
