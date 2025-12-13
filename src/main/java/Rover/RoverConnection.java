@@ -125,7 +125,7 @@ public class RoverConnection {
         }
     }
     public void closeServer() {
-        missionLinkClient.stop();
         telemetryStreamClient.stop();
+        missionLinkClient.stop();
     }
 }

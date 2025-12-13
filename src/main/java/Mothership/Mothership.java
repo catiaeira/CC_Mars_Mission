@@ -86,23 +86,23 @@
                 case REQUEST_MISSION:
                     RequestMission req = (RequestMission) receivedMsg.getMessageData();
 
-                System.out.println("[Mothership] Choosing a new mission for Rover " + req.getIdRover());
-                Mission mission = this.mothershipMissions.getMission();
-                if (mission == null) break;
+                    System.out.println("[Mothership] Choosing a new mission for Rover " + req.getIdRover());
+                    Mission mission = this.mothershipMissions.getMission();
+                    if (mission == null) break;
 
-                mission.setRoverId(req.getIdRover());
-                mothershipMissions.startMission(mission);
+                    mission.setRoverId(req.getIdRover());
+                    mothershipMissions.startMission(mission);
 
-                RoverInfo rInfoMission = this.rovers.get(req.getIdRover());
-                int seqMission = (rInfoMission != null) ? rInfoMission.getAndIncrementOutputSequenceNumber() : 0;
+                    RoverInfo rInfoMission = this.rovers.get(req.getIdRover());
+                    int seqMission = (rInfoMission != null) ? rInfoMission.getAndIncrementOutputSequenceNumber() : 0;
 
-                reply = new MessageUDP(
-                        seqMission,
-                        ackNum,
-                        fragID, fragIdx, totalFrags,
-                        Message.MessageDataTypes.MISSION,
-                        new MissionMessage(mission));
-                break;
+                    reply = new MessageUDP(
+                            seqMission,
+                            ackNum,
+                            fragID, fragIdx, totalFrags,
+                            Message.MessageDataTypes.MISSION,
+                            new MissionMessage(mission));
+                    break;
 
             default:
                 break;

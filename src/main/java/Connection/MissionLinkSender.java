@@ -11,31 +11,57 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MissionLinkSender implements Runnable {
     private final DatagramSocket socket;
     private final BlockingQueue<Package> outgoingQueue;
+    private final ScheduledExecutorService retransmissionScheduler; // New scheduler
 
     // shared control variables
     private static final int MAX_TIMEOUTS = 5;
-    private static final int TIMEOUT_MS = 5000; // 5 segundos para retransmitir
+    private static final int TIMEOUT_MS = 5000;
+    private static final int RETRANSMISSION_CHECK_INTERVAL_MS = 1000; // check pending ACKs every second
+
     private final ConcurrentHashMap<String, MessageUDP> lastSentReply = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, PendingAck> pendingAcks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, PendingMessage> pendingAcks = new ConcurrentHashMap<>();
+    private volatile boolean running = true;
+    private Thread sendingThread = null;
 
-    private volatile boolean stopCurrentTransmission = false;
-    private volatile PendingAck currentPendingAck = null;
-
-    private static class PendingAck {
-        volatile int waitingForAckNumber;
-        final Object lock = new Object();
+    private static class PendingMessage {
+        final MessageUDP message;
+        final String ip;
+        final int port;
+        final int expectedAckNumber;
+        final List<MessageUDP> fragments;
+        volatile AtomicLong lastSentTime = new AtomicLong(System.currentTimeMillis());
+        volatile int attempts = 0;
         volatile boolean ackReceived = false;
-        PendingAck(int expected) { this.waitingForAckNumber = expected; }
+
+        PendingMessage(MessageUDP msg, String ip, int port, int expectedAck) {
+            this.message = msg;
+            this.ip = ip;
+            this.port = port;
+            this.expectedAckNumber = expectedAck;
+            this.fragments = FragManager.fragmentMessage(msg);
+        }
     }
-    private boolean running = true;
 
     public MissionLinkSender(DatagramSocket socket, BlockingQueue<Package> outgoingQueue) {
         this.socket = socket;
         this.outgoingQueue = outgoingQueue;
+
+        // initialize the scheduler for retransmissions
+        this.retransmissionScheduler = Executors.newSingleThreadScheduledExecutor();
+        this.retransmissionScheduler.scheduleAtFixedRate(
+                this::retransmissionTask,
+                RETRANSMISSION_CHECK_INTERVAL_MS,
+                RETRANSMISSION_CHECK_INTERVAL_MS,
+                TimeUnit.MILLISECONDS
+        );
     }
     public void sendMessage(MessageUDP msg, String ip, int port) {
         try {
@@ -47,40 +73,30 @@ public class MissionLinkSender implements Runnable {
     }
 
     public void confirmAck(int ackNumber, String address) {
-        PendingAck p = pendingAcks.get(address);
+        PendingMessage p = pendingAcks.get(address);
         if (p == null) return;
-        System.out.println("RECEIVED ACK : " + ackNumber + " AND WAS WAITING FOR " + p.waitingForAckNumber);
-        synchronized (p.lock) {
-            if (ackNumber >= p.waitingForAckNumber) {
-                p.ackReceived = true;
-                p.lock.notifyAll();
-            }
-        }
-    }
 
-    public void cancelCurrentTransmission() {
-        stopCurrentTransmission = true;
-        PendingAck p = currentPendingAck;
-        if (p != null) {
-            synchronized (p.lock) {
-                p.ackReceived = true; //pretend an ACK was received to leave the waiting phase
-                p.lock.notifyAll();
+        synchronized (p) {
+            if (ackNumber >= p.expectedAckNumber) {
+                p.ackReceived = true;
+                System.out.println("RECEIVED ACK : " + ackNumber + " AND WAS WAITING FOR " + p.expectedAckNumber);
             }
         }
     }
 
     public void stop() {
         running = false;
+        this.sendingThread.interrupt();
+        retransmissionScheduler.shutdownNow();
     }
 
     @Override
     public void run() {
+        this.sendingThread = Thread.currentThread();
         while (running) {
             try {
                 Package pkg = outgoingQueue.take();
                 MessageUDP msg = pkg.getMessage();
-
-                stopCurrentTransmission = false;
 
                 InetAddress ipAddress = InetAddress.getByName(pkg.getToIp());
                 int port = pkg.getToPort();
@@ -93,69 +109,25 @@ public class MissionLinkSender implements Runnable {
                     continue;
                 }
 
-                //calculate the expected ACK
-                int payloadSize = 0;
-                try {
-                    if (msg.getMessageData() != null) {
-                        payloadSize = msg.getMessageData().convertMessageDataToBytes().length;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                List<MessageUDP> fragments = FragManager.fragmentMessage(msg);
+                for (MessageUDP frag : fragments) {
+                    byte[] data = frag.convertMessageToBytes();
+                    DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, port);
+                    socket.send(packet);
                 }
 
+                int payloadSize = (msg.getMessageData() != null) ? msg.getMessageData().convertMessageDataToBytes().length : 0;
                 int expectedAck = msg.getSequenceNumber() + (payloadSize > 0 ? payloadSize : 1);
 
-                PendingAck pAck = new PendingAck(expectedAck);
-                this.currentPendingAck = pAck;
+                PendingMessage pMsg = new PendingMessage(msg, pkg.getToIp(), port, expectedAck);
 
                 String pendingKey = ipAddress.getHostAddress() + ":" + port;
-                pendingAcks.put(pendingKey, pAck);
+                pendingAcks.put(pendingKey, pMsg);
 
-                List<MessageUDP> fragments = FragManager.fragmentMessage(msg);
-
-                boolean sentSuccessfully = false;
-                int attempts = 0;
-
-                //retransmission loop
-                while (!sentSuccessfully && !stopCurrentTransmission) {
-                    attempts++;
-
-                    for (MessageUDP frag : fragments) {
-                        byte[] data = frag.convertMessageToBytes();
-                        DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, port);
-
-                        socket.send(packet);
-                    }
-
-                    String fragInfo = (fragments.size() > 1) ? " (" + fragments.size() + " fragments)" : "";
-
-                    if (attempts > 1) {
-                        UDPPrint.log("SND", msg, "Retransmission #" + attempts + fragInfo + " -> " + pkg.getToIp(), true);
-                        //System.out.println("expecting: " + pAck.waitingForAckNumber);
-                    } else {
-                        UDPPrint.log("SND", msg, "To: " + pkg.getToIp() + fragInfo + " (Waiting ACK " + expectedAck + ")", false);
-                        System.out.println(msg);
-                    }
-
-                    synchronized (pAck.lock) {
-                        if (!pAck.ackReceived && !stopCurrentTransmission) {
-                            pAck.lock.wait(TIMEOUT_MS);
-                        }
-
-                        if (pAck.ackReceived || stopCurrentTransmission) {
-                            sentSuccessfully = true;
-                            pendingAcks.remove(pendingKey);
-                        } else {
-                            if (attempts > MAX_TIMEOUTS) {
-                                UDPPrint.log("SND", msg, "Max number of retransmissions hit, dropping message...", true);
-                                pendingAcks.remove(pendingKey);
-                                sentSuccessfully = true;
-                            }
-                        }
-                    }
-                }
-
-                this.currentPendingAck = null;
+                // logging
+                String fragInfo = (fragments.size() > 1) ? " (" + fragments.size() + " fragments)" : "";
+                UDPPrint.log("SND", msg, "To: " + pkg.getToIp() + fragInfo + " (Waiting ACK " + expectedAck + ")", false);
+                System.out.println("[ML SENDER] SENDING: " + msg);
 
             } catch (IOException | InterruptedException e) {
                 if (running) {
@@ -166,6 +138,42 @@ public class MissionLinkSender implements Runnable {
             }
         }
         System.out.println("Closing ML sender!");
+    }
+
+    private void retransmissionTask() {
+        long currentTime = System.currentTimeMillis();
+
+        pendingAcks.entrySet().removeIf(entry -> {
+            PendingMessage p = entry.getValue();
+            if (p.ackReceived) return true; // remove the ack
+
+            if (currentTime - p.lastSentTime.get() >= TIMEOUT_MS) {
+                p.attempts++;
+                if (p.attempts > MAX_TIMEOUTS) {
+                    UDPPrint.log("SND", p.message, "Max number of retransmissions hit, dropping message...", true);
+                    return true; // drop message
+                }
+                try { // retransmitting
+                    InetAddress ipAddress = InetAddress.getByName(p.ip);
+                    int port = p.port;
+
+                    for (MessageUDP frag : p.fragments) {
+                        byte[] data = frag.convertMessageToBytes();
+                        DatagramPacket packet = new DatagramPacket(data, data.length, ipAddress, port);
+                        socket.send(packet);
+                    }
+
+                    p.lastSentTime.set(currentTime);
+                    String fragInfo = (p.fragments.size() > 1) ? " (" + p.fragments.size() + " fragments)" : "";
+                    UDPPrint.log("SND", p.message, "Retransmission #" + p.attempts + fragInfo + " -> " + p.ip, true);
+
+                } catch (IOException e) {
+                    System.err.println("[ML SENDER] Error during retransmission: " + e.getMessage());
+                    return true;
+                }
+            }
+            return false;
+        });
     }
 
     public MessageUDP getLastSentReply (String address) {

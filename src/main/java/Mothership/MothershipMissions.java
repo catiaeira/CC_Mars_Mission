@@ -54,19 +54,16 @@ public class MothershipMissions {
         new Thread (() -> {
             try {
             while (true) {
-                //System.out.println("\n--creating mission");
                 List<Integer> roverIDs = mothership.getRoverIDs().stream().toList();
                 boolean chanceOfSpecificMission = rand.nextInt(100) < 30;
                 if (!roverIDs.isEmpty() && chanceOfSpecificMission) {   // create a mission to a specific rover
                     int id = roverIDs.get(rand.nextInt(roverIDs.size()));
-                    //System.out.println("specific mission to rover " + id+"\n");
-
+                    System.out.println("\n[MOTHERSHIP MISSIONS] Sending mission to Rover " + id);
                     Mission mission = createRandomMissionToRover(id);
                     activeMissions.put(mission.getMissionId(), mission);
                     mothership.sendMission(new MissionMessage(mission)); // send right away
                 } else missionsToDo.add(createRandomMission());
 
-                //System.out.println("mission created--\n");
                 int sleepFor = rand.nextInt(30,60); // new missions every 30 secs minimum, 60 seconds max
                 Thread.sleep(sleepFor * 1000L);
                 }
@@ -95,6 +92,7 @@ public class MothershipMissions {
                 m = accidentallyCompleted;
             }
             else return;
+            System.out.println("[MOTHERSHIP MISSIONS] Mission recuperated!");
         }
         if (completionLevel < 0 || completionLevel > 100) {
             activeMissions.remove(missionId);

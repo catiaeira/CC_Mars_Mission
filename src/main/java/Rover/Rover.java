@@ -111,7 +111,7 @@ public class Rover {
         switch (type) {
             case ROVER_INIT:
                 RoverInitMessage roverMsg = (RoverInitMessage) msg;
-                if (initiatedLatch.getCount() == 0 && this.id == roverMsg.getId()) return;
+                if (initiatedLatch.getCount() == 0 && this.id == roverMsg.getId()) return; // repeated message
 
                 setId(roverMsg.getId());
                 initiatedLatch.countDown();

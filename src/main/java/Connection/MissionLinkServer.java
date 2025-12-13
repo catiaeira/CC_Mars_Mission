@@ -47,8 +47,6 @@ public class MissionLinkServer implements Runnable, MissionLinkGeneric { //UDP
     }
 
     public void processMessageContent(MessageUDP msg, DatagramPacket packet) {
-        System.out.println("[ML] Received: " + msg.toString());
-
         switch (msg.getMessageDataType()) {
             case ROVER_INIT:
                 // the mothership will store the ip/port from the packet

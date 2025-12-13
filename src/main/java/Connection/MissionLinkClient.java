@@ -1,11 +1,13 @@
 package Connection;
 
+import Message.Message;
 import Message.MessageUDP;
 import Message.Package;
 import Rover.Rover;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -53,23 +55,16 @@ public class MissionLinkClient implements Runnable, MissionLinkGeneric {
 
     public void stop() {
         this.receiver.stop();
+        try {
+            Thread.sleep(500);  // give time to send ACKs before closing
+        } catch (Exception e) { e.printStackTrace();}
+
         this.sender.stop();
         System.out.println("[MissionLinkClient] Closing!");
     }
 
     @Override
     public void processMessageContent(MessageUDP msg, DatagramPacket packet) {
-        System.out.println("[ML] Received: " + msg.toString());
-
-        switch (msg.getMessageDataType()) {
-            case ROVER_INIT:
-                if (this.sender != null) {
-                    this.sender.cancelCurrentTransmission();
-                }
-                break;
-            default:
-                break;
-        }
         rover.processMessage(msg.getMessageDataType(), msg.getMessageData());
     }
 

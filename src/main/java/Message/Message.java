@@ -18,7 +18,7 @@ public class Message {
         MISSION_UPDATE,
         ROVER_INIT,
         ROVER_TELEMETRY,
-        ACK;
+        ACK
     }
 
     public Message(MessageDataTypes type, MessageData data) {
